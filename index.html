@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="ja" data-theme="mint"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>お迎えルールナビ</title>
+<link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="theme.css">
+<style>
+#app{max-width:520px;margin:0 auto;min-height:100vh;padding-bottom:120px}
+h1,h2,h3{margin:0}
+.hd{background:var(--accent);border-bottom:2px solid var(--ink);border-radius:0 0 28px 28px;padding:max(20px,env(safe-area-inset-top)) 16px 20px}
+.hd.soft{background:var(--soft)}.hd h1{font-size:24px;margin-top:2px}.sm{font-size:13px;font-weight:800}
+.lnk{font-size:14px;font-weight:800;color:var(--ink);text-decoration:none;display:inline-block;padding:10px 0;background:none;border:0;cursor:pointer}
+.row{display:flex;gap:10px;align-items:center}.sb{justify-content:space-between}.grow{flex:1;min-width:0}
+.col{display:flex;flex-direction:column;gap:12px;margin-top:16px}
+a.card,.card a{color:inherit;text-decoration:none}
+.lk{display:flex;gap:12px;align-items:center;flex:1;min-width:0}
+.th{width:64px;height:64px;border-radius:14px;border:2px solid var(--ink);object-fit:cover;flex:none;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:800}
+.nm{font-size:16px;font-weight:800}.meta{margin-top:6px;font-size:12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.bd{font-size:13px;line-height:1.6;margin-top:4px;white-space:pre-wrap}
+.who{font-size:11px;margin-top:6px;opacity:.7}
+.no{width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--on-ink);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.th2{width:64px;height:64px;border-radius:12px;border:2px solid var(--ink);object-fit:cover;flex:none}
+.hero{position:relative;min-height:230px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:var(--soft);border-bottom:2px solid var(--ink);border-radius:0 0 32px 32px}
+.back{position:absolute;left:16px;top:max(16px,env(safe-area-inset-top));width:44px;padding:0}
+.ttl{font-size:24px}.empty{text-align:center;line-height:1.8;font-size:14px;padding:24px 0}
+.fav{width:46px;min-height:46px;padding:0;background:var(--bg);border-radius:50%}.fav.on{background:var(--soft)}
+.fav.on svg,#fv[aria-pressed="true"] svg{fill:currentColor}#fv[aria-pressed="true"]{background:var(--soft)}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{display:flex;align-items:center;gap:10px;min-height:76px;padding:10px 12px;text-align:left;background:var(--surface);cursor:pointer}
+.tile[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.tile b{display:block;font-size:15px}.tile small{display:block;font-size:11px;margin-top:2px}
+.ico{width:40px;height:40px;border-radius:50%;border:2px solid var(--ink);background:var(--soft);color:var(--ink);display:flex;align-items:center;justify-content:center;flex:none}
+.tile[aria-pressed="true"] .ico{background:var(--accent)}
+.fl{font-size:15px;margin:18px 0 8px}
+.pimg{width:100%;max-height:220px;object-fit:cover;border:2px solid var(--ink);border-radius:var(--radius);margin-bottom:10px}
+.note{font-size:12px;font-weight:800;background:var(--soft);border:2px solid var(--ink);border-radius:14px;padding:10px 12px;line-height:1.6}
+textarea.field{height:104px;resize:none}
+.fab{right:max(16px,calc(50% - 244px));z-index:4}
+.navbar{left:50%;right:auto;width:min(488px,calc(100% - 32px));translate:-50% 0;z-index:5}
+.box{padding:18px;background:var(--surface);margin-top:16px;line-height:1.8;font-size:14px}
+.sk{height:84px;margin-top:12px}
+.dot{display:inline-block;width:14px;height:14px;border:2px solid var(--ink);border-radius:5px;margin-right:6px;vertical-align:-2px}
+.seg button{font-size:13px;padding:0 4px}
+.round{width:44px;min-height:44px;padding:0;border-radius:50%}
+.sbtn{min-height:40px;padding:0 14px;font-size:13px}
+/* 見取図 */
+.plan{position:relative;border:2px dashed var(--ink);border-radius:var(--radius);background:var(--surface);min-height:220px;overflow:hidden;cursor:crosshair}
+.plan img{display:block;width:100%;pointer-events:none;user-select:none}
+.mk{position:absolute;width:32px;height:32px;margin:-16px 0 0 -16px;border-radius:50%;background:var(--ink);color:var(--on-ink);font-weight:800;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform var(--dur) var(--ease)}
+.mk.sel{background:var(--accent);color:var(--ink);outline:3px solid var(--ink);transform:scale(1.15)}
+/* 並び替え */
+.grip{width:28px;height:44px;display:flex;align-items:center;justify-content:center;cursor:grab;touch-action:none;flex:none}
+.grip i{display:grid;grid-template-columns:6px 6px;gap:4px}.grip b{width:6px;height:6px;border-radius:50%;background:var(--ink)}
+.srow.sel{background:var(--accent)}.srow.lifting{position:relative;z-index:2}
+.ava{width:48px;height:48px;border-radius:50%;border:2px solid var(--ink);background:var(--soft);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;flex:none}
+/* 見取図スタンプ */
+.ptools{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 12px}
+.ptl{flex:none;min-height:40px;padding:0 12px;font-size:12px;box-shadow:none}
+.ptl[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.st{position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border:2px solid var(--ink);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:rotate(var(--r,0deg));transition:transform var(--dur) var(--ease)}
+.st.sel{outline:3px solid var(--ink);outline-offset:2px}
+</style></head>
+<body><div id="app"></div>
+<script>
+addEventListener('error',function(e){var a=document.getElementById('app');if(a&&!a.innerHTML.trim())a.innerHTML='<p style="padding:24px;font-family:sans-serif;line-height:1.7">画面を表示できませんでした。<br>エラー: '+String(e.message).replace(/</g,'&lt;')+'</p>'});
+addEventListener('unhandledrejection',function(e){var a=document.getElementById('app');if(a&&!a.innerHTML.trim())a.innerHTML='<p style="padding:24px;font-family:sans-serif;line-height:1.7">読み込めませんでした。<br>'+String(e.reason&&e.reason.message||e.reason).replace(/</g,'&lt;')+'</p>'});
+</script>
+<script type="module">
+import {auth,db,A,F,esc,toast,uploadImage,watchSession,reloadSession,hold,errMsg} from './core.js';
+import {editPhoto,STAMPS,stampSvg} from './editor.js';
+const $=s=>document.querySelector(s),app=$('#app');
+const short=n=>n.replace('静岡市立','');
+const kind=s=>s.type==='小学校'?'elem':s.type==='中学校'?'mid':'sp';
+const kLabel={elem:'小学校',mid:'中学校',sp:'特別支援'};
+const TORD={'小学校':0,'中学校':1,'特別支援学校':2};
+const ic=p=>`<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${p}</svg>`;
+const STAR=ic('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>');
+const UP=ic('<path d="M6 14l6-6 6 6"/>'),DN=ic('<path d="M6 10l6 6 6-6"/>');
+const SWAP=ic('<path d="M8 4v14M8 18l-3-3M8 18l3-3M16 20V6M16 6l-3 3M16 6l3 3"/>');
+const CAT={
+ '乗降場所':['<path d="M8 4v14M8 18l-3-3M8 18l3-3M16 20V6M16 6l-3 3M16 6l3 3"/>','乗り降りする場所'],
+ '待機場所':['<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>','到着後に待つ場所'],
+ '駐車場':['<rect x="4" y="4" width="16" height="16" rx="4"/><path d="M10 17V8h3a2.5 2.5 0 0 1 0 5h-3"/>','止められる場所'],
+ '出入口':['<path d="M6 21V4h10v17M3 21h18M13 12.5v.01"/>','門・入口の位置'],
+ '注意点':['<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/>','時間帯・禁止事項・注意することなど']};
+const dt=t=>t?.toDate?t.toDate().toLocaleDateString('ja-JP'):'';
+
+/* ---- 状態 ---- */
+let U=null,P=null,ready=false,SCH=[];
+let q='',onlyFav=false,tf='all',tok=0,CUR=null;
+const isAdmin=()=>P&&P.role==='admin';
+const uref=()=>F.doc(db,'users',U.uid);
+const sref=s=>F.doc(db,'schools',s.id);
+const pcol=s=>F.collection(db,'schools',s.id,'points');
+const getPts=async s=>(await F.getDocs(F.query(pcol(s),F.orderBy('order')))).docs.map(d=>({id:d.id,...d.data()}));
+/* 写真: 編集画面(スタンプ・モザイク)を挟んでからCloudinaryへ。キャンセルならnull */
+async function prep(file){const r=await editPhoto(file);if(!r)return null;toast('写真をアップロード中…');return uploadImage(r.blob,{raw:r.raw})}
+const saveStamps=()=>F.updateDoc(sref(CUR.s),{stamps:CUR.s.stamps||[]}).catch(er=>toast(errMsg(er)));
+async function init(){
+ SCH=(await F.getDocs(F.collection(db,'schools'))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(TORD[x.type]??9)-(TORD[y.type]??9)||x.id.localeCompare(y.id));
+ P.favs=Array.isArray(P.favs)?P.favs:[];
+}
+const mapUrl=s=>`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address||s.name)}`;
+
+/* ---- 下部ナビ ---- */
+const nav=cur=>`<nav class="navbar" aria-label="メイン">${[['','学校','schools'],['notices','お知らせ','notices'],['settings','設定','settings']].map(([h,l,k])=>`<button data-nav="${h}" ${k===cur?'aria-current="page"':''}>${l}</button>`).join('')}</nav>`;
+
+/* ---- ログイン画面など ---- */
+const loading=()=>{app.innerHTML=`<header class="hd"><div class="sm">お迎えルールナビ</div><h1>読み込み中…</h1></header><main style="padding:16px"><div class="skeleton sk"></div><div class="skeleton sk"></div><div class="skeleton sk"></div></main>`};
+const msgView=(title,body,btns='')=>{app.innerHTML=`<header class="hd"><div class="sm">お迎えルールナビ</div><h1>${title}</h1></header><main style="padding:16px"><div class="box pop">${body}</div><div class="col">${btns}<button class="btn" data-lo>ログアウト</button></div></main>`};
+function authView(mode='login'){const reg=mode==='reg';
+ app.innerHTML=`<header class="hd"><div class="sm">静岡市 送迎ポイント共有</div><h1>お迎えルールナビ</h1></header>
+ <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group">${[['login','ログイン'],['reg','新規登録']].map(([k,l])=>`<button data-m="${k}" aria-pressed="${k===mode}">${l}</button>`).join('')}</div>
+ ${reg?'<p class="note" style="margin-top:14px">登録後、管理者が承認するとご利用いただけます。</p>':''}
+ ${reg?`<h3 class="fl">お名前</h3><input id="nm" class="field" autocomplete="name" placeholder="例:山田 花子">
+ <h3 class="fl">事業所名・所属</h3><input id="of" class="field" placeholder="例:○○放課後デイ">`:''}
+ <h3 class="fl">メールアドレス</h3><input id="em" class="field" type="email" autocomplete="email" inputmode="email">
+ <h3 class="fl">パスワード${reg?'(6文字以上)':''}</h3><input id="pw" class="field" type="password" autocomplete="${reg?'new-password':'current-password'}">
+ <button id="go" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:24px;font-size:17px">${reg?'登録を申請する':'ログイン'}</button>
+ ${reg?'':'<button id="rs" class="btn" style="width:100%;margin-top:14px">パスワードを忘れた</button>'}</main>`;
+ const val=id=>($(id)?.value||'').trim();
+ $('#go').onclick=async()=>{const em=val('#em'),pw=$('#pw').value;
+  if(!em||!pw){toast('メールとパスワードを入力してください');return}
+  const b=$('#go');b.disabled=true;
+  try{
+   if(reg){const nm=val('#nm'),of=val('#of');if(!nm){toast('お名前を入力してください');b.disabled=false;return}
+    hold.on=true;
+    try{const c=await A.createUserWithEmailAndPassword(auth,em,pw);
+     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm,office:of,email:em,status:'pending',role:'member',favs:[],createdAt:F.serverTimestamp()})}
+    finally{hold.on=false;if(auth.currentUser)await reloadSession()}
+   }else await A.signInWithEmailAndPassword(auth,em,pw);
+  }catch(e){toast(errMsg(e));b.disabled=false}};
+ const rs=$('#rs');if(rs)rs.onclick=async()=>{const em=val('#em');if(!em){toast('メールアドレスを入力してください');return}
+  try{await A.sendPasswordResetEmail(auth,em);toast('再設定メールを送りました')}catch(e){toast(errMsg(e))}}}
+const pendingView=()=>msgView('承認待ちです',`${esc(P.name)} さん、登録ありがとうございます。<br>管理者の承認が終わるとご利用いただけます。`,'<button class="btn btn--primary" data-re>承認されたか確認する</button>');
+
+/* ---- 学校一覧 ---- */
+const card=(s,i)=>{const k=kind(s),f=P.favs.includes(s.id),n=s.pointCount||0;
+ return `<div class="card pop" style="--i:${Math.min(i,8)}"><a class="lk" href="#/s/${encodeURIComponent(s.id)}">
+ ${s.photo?`<img class="th" src="${esc(s.photo)}" alt="" loading="lazy">`:`<div class="th" style="background:var(--t-${k})">${esc(short(s.name)[0])}</div>`}
+ <div class="grow"><div class="nm">${esc(short(s.name))}</div><div class="meta"><span class="tag tag--${k}">${kLabel[k]}</span>${n?`送迎ポイント ${n}件`:'まだ登録なし'}</div></div></a>
+ <button class="btn fav ${f?'on':''}" data-fav="${esc(s.id)}" aria-label="お気に入り">${STAR}</button></div>`};
+function drawList(){
+ const l=SCH.filter(s=>(tf==='all'||kind(s)===tf)&&(!onlyFav||P.favs.includes(s.id))&&s.name.includes(q.trim()));
+ $('#list').innerHTML=l.length?l.map(card).join(''):`<p class="empty">${!SCH.length?'学校データがまだ登録されていません。<br>管理ページで「初期登録」してください。':onlyFav?'お気に入りの学校はまだありません。☆を押すと登録できます。':'見つかりませんでした'}</p>`}
+function home(){
+ app.innerHTML=`<header class="hd"><div class="sm">静岡市 ${SCH.length}校</div><h1>今日はどの学校へ？</h1>
+ <div class="row" style="margin-top:12px"><input id="q" class="field" placeholder="学校名で探す" aria-label="学校名で検索" value="${esc(q)}" style="flex:1;height:52px;border-radius:26px"><button id="fv" class="btn" aria-label="お気に入りだけ表示" aria-pressed="${onlyFav}" style="width:52px;padding:0;border-radius:50%">${STAR}</button></div></header>
+ <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group" aria-label="校種">${[['all','すべて'],['elem','小学校'],['mid','中学校'],['sp','特別支援']].map(([k,l])=>`<button data-t="${k}" aria-pressed="${tf===k}">${k==='all'?'':`<i class="dot" style="background:var(--t-${k})"></i>`}${l}</button>`).join('')}</div><div id="list" class="col"></div></main>${nav('schools')}`;
+ drawList()}
+
+/* ---- お知らせ・設定 ---- */
+async function notices(t){
+ app.innerHTML=`<header class="hd"><div class="sm">管理者からの連絡</div><h1>お知らせ</h1></header><main style="padding:16px"><div class="skeleton sk"></div></main>${nav('notices')}`;
+ let L=[];try{L=(await F.getDocs(F.query(F.collection(db,'notices'),F.orderBy('createdAt','desc'),F.limit(30)))).docs.map(d=>d.data())}catch(e){toast(errMsg(e))}
+ if(t!==tok)return;
+ $('main').innerHTML=L.length?`<div class="col" style="margin-top:0">${L.map((n,i)=>`<div class="card pop" style="--i:${Math.min(i,8)};display:block"><div class="nm">${esc(n.title)}</div>${n.body?`<div class="bd">${esc(n.body)}</div>`:''}<div class="who">${dt(n.createdAt)}</div></div>`).join('')}</div>`:'<p class="empty">お知らせはまだありません。</p>'}
+function settings(){
+ app.innerHTML=`<header class="hd"><div class="sm">アカウント</div><h1>設定</h1></header><main style="padding:16px">
+ <div class="card pop"><div class="ava">${esc((P.name||'?')[0])}</div><div class="grow"><div class="nm">${esc(P.name)}</div><div class="bd">${esc(P.office||'')}<br>${esc(P.email||'')}</div><div class="meta"><span class="tag tag--mid">${isAdmin()?'管理者':'一般'}</span></div></div></div>
+ <div class="col">${isAdmin()?'<a class="btn btn--primary" href="admin.html">管理ページを開く</a>':''}<button class="btn" data-lo>ログアウト</button></div>
+ <p class="note" style="margin-top:20px">写真を登録するときは編集画面が開きます。児童の顔・名札・車のナンバーは「モザイク」か「黒塗り」で隠してください。</p></main>${nav('settings')}`}
+
+/* ---- 学校詳細 ---- */
+const ptCard=(s,x,i)=>`<a class="card pop" style="--i:${Math.min(i,8)}" href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}${x.userName?`<div class="who">登録: ${esc(x.userName)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</a>`;
+function drawPlan(){
+ const {s,L,sel,selS,tool}=CUR,box=$('#plan');if(!box)return;
+ const SL=(s.stamps||[]).filter(st=>STAMPS[st.t]);
+ $('#ptools').innerHTML=[['num','番号',''],...Object.entries(STAMPS).map(([k,v])=>[k,v.l,stampSvg(k,16,2.6)])].map(([k,l,i])=>`<button class="btn ptl" data-ptool="${k}" aria-pressed="${k===tool}">${i}${l}</button>`).join('');
+ box.innerHTML=(s.plan?`<img src="${esc(s.plan)}" alt="見取図">`:'')
+  +SL.map(st=>`<div class="st ${st.id===selS?'sel':''}" data-st="${st.id}" style="left:${st.x}%;top:${st.y}%;--r:${st.r||0}deg;background:var(${STAMPS[st.t].c});color:${STAMPS[st.t].fg||'var(--ink)'}">${stampSvg(st.t,22,2.6)}</div>`).join('')
+  +L.map((x,i)=>x.x!=null?`<div class="mk ${x.id===sel?'sel':''}" data-mk="${x.id}" style="left:${x.x}%;top:${x.y}%">${i+1}</div>`:'').join('');
+ const si=L.findIndex(x=>x.id===sel),un=L.findIndex(x=>x.x==null),ss=SL.find(x=>x.id===selS);
+ $('#pinfo').innerHTML=ss?`<div class="row sb"><span class="sm">「${STAMPS[ss.t].l}」を選択中。見取図をタップすると動かせます</span><span class="row" style="gap:6px"><button class="btn sbtn" data-rot="-45" aria-label="左に回す">↺</button><button class="btn sbtn" data-rot="45" aria-label="右に回す">↻</button><button class="btn sbtn" data-unstamp>外す</button></span></div>`
+  :si>=0?`<div class="row sb"><span class="sm">「${si+1} ${esc(L[si].title)}」を選択中。見取図をタップすると動かせます</span><button class="btn sbtn" data-unplace>外す</button></div>`
+  :tool!=='num'?`<span class="sm">「${STAMPS[tool].l}」を置きます。見取図をタップしてください</span>`
+  :un>=0?`<span class="sm">次は「${un+1} ${esc(L[un].title)}」を置きます</span>`:'<span class="sm">すべて置きました。番号をタップすると動かせます</span>'}
+async function detail(s,t){
+ app.innerHTML=`<div class="hero"><a class="btn back" href="#/" aria-label="学校一覧に戻る">&lt;</a></div><main style="padding:18px 16px"><h2 class="ttl">${esc(s.name)}</h2><div class="skeleton sk"></div><div class="skeleton sk"></div></main>`;
+ let L;try{L=await getPts(s)}catch(e){if(t===tok)toast(errMsg(e));L=[]}
+ if(t!==tok)return;
+ CUR={s,L,sel:null,selS:null,tool:'num'};
+ const k=kind(s),id=encodeURIComponent(s.id),p=s.photo;
+ app.innerHTML=`<div class="hero" style="${p?`background:url('${esc(p)}') center/cover`:''}">
+ <a class="btn back" href="#/" aria-label="学校一覧に戻る">&lt;</a>${p?'':'<div class="sm">校門の写真はまだありません</div>'}
+ <label class="btn btn--primary">${p?'写真を撮り直す':'現地で撮影して登録'}<input type="file" accept="image/*" capture="environment" hidden data-photo="${esc(s.id)}"></label></div>
+ <main style="padding:18px 16px"><h2 class="ttl">${esc(s.name)}</h2><div class="meta"><span class="tag tag--${k}">${kLabel[k]}</span></div>
+ <div class="row" style="margin-top:14px">${s.website?`<a class="btn grow" href="${esc(s.website)}" target="_blank" rel="noopener">学校HPを開く</a>`:''}<a class="btn grow" href="${esc(mapUrl(s))}" target="_blank" rel="noopener">地図を見る</a></div>
+ <div class="row sb" style="margin-top:26px"><h3>送迎ポイント <span class="tag tag--mid" style="font-size:15px">${L.length}</span></h3>${isAdmin()&&L.length>1?`<a class="btn" href="#/s/${id}/sort">${SWAP.replace('width="22" height="22"','width="18" height="18"')}並び替え</a>`:''}</div>
+ <div class="col" style="margin-top:12px">${L.length?L.map((x,i)=>ptCard(s,x,i)).join(''):'<p class="empty">まだ送迎ポイントがありません。<br>現地で気づいたことを、最初の1件として登録しましょう。</p>'}</div>
+ <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
+ <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図をタップして番号を置く</p>
+ <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label></main>
+ <a class="btn btn--primary fab" href="#/s/${id}/new">＋ ポイント追加</a>${nav('schools')}`;
+ drawPlan()}
+
+/* ---- 追加・編集 ---- */
+async function form(s,pid,t){
+ const back='#/s/'+encodeURIComponent(s.id);let x=null;
+ if(pid){try{x=(await getPts(s)).find(v=>v.id===pid)}catch(e){toast(errMsg(e))}if(t!==tok)return;if(!x){location.hash=back.slice(1);return}}
+ let cat=x?.cat||'乗降場所',img=x?.img||'';
+ const canDel=x&&(isAdmin()||x.uid===U.uid);
+ app.innerHTML=`<header class="hd soft"><a class="lnk" href="${back}">キャンセル</a><h1>${x?'送迎ポイントを編集':'送迎ポイントを追加'}</h1><div class="sm">${esc(short(s.name))}</div></header>
+ <main style="padding:2px 16px 40px"><h3 class="fl">分類</h3><div class="tiles">${Object.entries(CAT).map(([n,[p,h]])=>`<button type="button" class="tile pop" data-cat="${n}" aria-pressed="${n===cat}" ${n==='注意点'?'style="grid-column:span 2"':''}><span class="ico">${ic(p)}</span><span><b>${n}</b><small>${h}</small></span></button>`).join('')}</div>
+ <h3 class="fl">タイトル</h3><input id="ti" class="field" placeholder="例:正門前のロータリー" value="${esc(x?.title)}">
+ <h3 class="fl">説明</h3><textarea id="bd" class="field" placeholder="進入方向、停車位置、注意することなど">${esc(x?.body)}</textarea>
+ <h3 class="fl">写真</h3><div id="pv">${img?`<img class="pimg" src="${esc(img)}" alt="">`:''}</div>
+ <div class="row"><label class="btn btn--primary grow">カメラで撮影<input type="file" accept="image/*" capture="environment" hidden data-pimg></label><label class="btn grow">アルバム<input type="file" accept="image/*" hidden data-pimg></label></div>
+ <p class="note" style="margin-top:10px">児童の顔・名札・車のナンバーが写ったときは、写真の編集画面で「モザイク」か「黒塗り」で隠してください。</p>
+ <button id="sv" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:24px;font-size:17px">保存する</button>
+ ${canDel?'<button id="dl" class="btn btn--danger" style="width:100%;margin-top:14px">このポイントを削除</button>':''}</main>`;
+ const go=()=>location.hash=back.slice(1);
+ app.querySelectorAll('.tile').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;app.querySelectorAll('.tile').forEach(t=>t.setAttribute('aria-pressed',t===b))});
+ app.querySelectorAll('[data-pimg]').forEach(i=>i.onchange=async()=>{const f=i.files[0];i.value='';if(!f)return;
+  const b=$('#sv');b.disabled=true;
+  try{const u=await prep(f);if(u){img=u;$('#pv').innerHTML=`<img class="pimg" src="${esc(img)}" alt="">`}}catch(e){toast(errMsg(e))}b.disabled=false});
+ $('#sv').onclick=async()=>{const ti=$('#ti').value.trim();if(!ti){toast('タイトルを入力してください');return}
+  const b=$('#sv');b.disabled=true;const body=$('#bd').value.trim();
+  try{
+   if(x)await F.updateDoc(F.doc(db,'schools',s.id,'points',x.id),{cat,title:ti,body,img,updatedAt:F.serverTimestamp()});
+   else{const wb=F.writeBatch(db);
+    wb.set(F.doc(pcol(s)),{cat,title:ti,body,img,uid:U.uid,userName:P.name,order:Date.now(),createdAt:F.serverTimestamp()});
+    wb.update(sref(s),{pointCount:F.increment(1)});await wb.commit();s.pointCount=(s.pointCount||0)+1}
+   toast('保存しました');go()}
+  catch(e){toast(errMsg(e));b.disabled=false}};
+ if(canDel)$('#dl').onclick=async()=>{if(!confirm('このポイントを削除しますか?'))return;
+  const r=F.doc(db,'schools',s.id,'points',x.id);
+  try{
+   try{const wb=F.writeBatch(db);wb.delete(r);wb.update(sref(s),{pointCount:F.increment(-1)});await wb.commit();s.pointCount=Math.max(0,(s.pointCount||0)-1)}
+   catch(e1){await F.deleteDoc(r)}
+   go()}catch(e){toast(errMsg(e))}}}
+
+/* ---- 並び替え(管理者のみ) ---- */
+async function sortView(s,t){
+ const back='#/s/'+encodeURIComponent(s.id);
+ if(!isAdmin()){location.hash=back.slice(1);return}
+ let L=[];try{L=await getPts(s)}catch(e){toast(errMsg(e))}
+ if(t!==tok)return;
+ app.innerHTML=`<header class="hd soft"><a class="lnk" href="${back}">戻る</a><h1>並び替え</h1><div class="sm" style="font-weight:500;line-height:1.6;margin-top:4px">左のつまみをドラッグするか、右の矢印で順番を変えられます。</div></header>
+ <main style="padding:2px 16px 40px"><div id="sl" class="col nofx">${L.map(x=>`<div class="card pop srow" data-id="${x.id}"><div class="grip" data-h aria-label="つまみ"><i><b></b><b></b><b></b><b></b><b></b><b></b></i></div><div class="no"></div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:4px">${esc(x.title)}</div></div>
+ <button class="btn round" data-mv="-1" aria-label="上へ">${UP}</button><button class="btn round" data-mv="1" aria-label="下へ">${DN}</button></div>`).join('')}</div>
+ <p class="note" style="margin-top:16px">見取図の番号も、順番に合わせて自動で入れ替わります。</p>
+ <button id="dn" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:22px;font-size:17px">完了</button></main>`;
+ const box=$('#sl'),rows=()=>[...box.children];
+ const renum=()=>rows().forEach((r,i,a)=>{r.querySelector('.no').textContent=i+1;r.querySelector('[data-mv="-1"]').disabled=i===0;r.querySelector('[data-mv="1"]').disabled=i===a.length-1});
+ const pick=r=>{rows().forEach(v=>v.classList.toggle('sel',v===r))};
+ renum();
+ box.onclick=e=>{const b=e.target.closest('[data-mv]');if(!b)return;const r=b.closest('.srow'),d=+b.dataset.mv;
+  if(d<0&&r.previousElementSibling)box.insertBefore(r,r.previousElementSibling);
+  if(d>0&&r.nextElementSibling)box.insertBefore(r.nextElementSibling,r);
+  pick(r);renum()};
+ let drag=null;
+ box.addEventListener('pointerdown',e=>{const h=e.target.closest('[data-h]');if(!h)return;drag=h.closest('.srow');h.setPointerCapture(e.pointerId);drag.classList.add('lifting');pick(drag);e.preventDefault()});
+ box.addEventListener('pointermove',e=>{if(!drag)return;
+  const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('.srow');if(!el||el===drag||el.parentNode!==box)return;
+  const a=rows();if(a.indexOf(el)<a.indexOf(drag))box.insertBefore(drag,el);else box.insertBefore(drag,el.nextSibling);renum()});
+ const end=()=>{if(drag){drag.classList.remove('lifting');drag=null}};
+ box.addEventListener('pointerup',end);box.addEventListener('pointercancel',end);
+ $('#dn').onclick=async()=>{
+  const ids=rows().map(r=>r.dataset.id),orders=L.map(x=>x.order).sort((a,b)=>a-b),by=Object.fromEntries(L.map(x=>[x.id,x]));
+  const wb=F.writeBatch(db);let n=0;
+  ids.forEach((id,i)=>{if(by[id].order!==orders[i]){wb.update(F.doc(db,'schools',s.id,'points',id),{order:orders[i]});n++}});
+  $('#dn').disabled=true;
+  try{if(n)await wb.commit();toast(n?'並び順を保存しました':'変更はありません');location.hash=back.slice(1)}
+  catch(e){toast(errMsg(e));$('#dn').disabled=false}}}
+
+/* ---- 画面切り替え ---- */
+function route(){
+ if(!ready)return loading();
+ if(!U)return authView();
+ if(!P)return msgView('アカウント情報がありません','登録が途中で止まった可能性があります。いったんログアウトして、もう一度「新規登録」からお試しください。');
+ if(P.status==='pending')return pendingView();
+ if(P.status!=='active')return msgView('ご利用できません',P.status==='rejected'?'登録は承認されませんでした。心当たりがある場合は管理者へお問い合わせください。':'このアカウントは現在停止されています。管理者へお問い合わせください。');
+ const t=++tok,m=(location.hash.slice(1)||'/').split('/');scrollTo(0,0);
+ if(m[1]==='notices')return notices(t);
+ if(m[1]==='settings')return settings();
+ if(m[1]!=='s')return home();
+ const s=SCH.find(x=>x.id===decodeURIComponent(m[2]||''));if(!s)return home();
+ if(m[3]==='new')return form(s,null,t);if(m[3]==='edit')return form(s,m[4],t);if(m[3]==='sort')return sortView(s,t);detail(s,t)}
+addEventListener('hashchange',route);
+
+watchSession(async(u,p)=>{U=u;P=p;ready=false;route();
+ if(u&&p&&p.status==='active'){try{await init()}catch(e){toast(errMsg(e))}}
+ ready=true;route()});
+
+app.addEventListener('click',async e=>{
+ const nv=e.target.closest('[data-nav]');if(nv){location.hash='#/'+nv.dataset.nav;return}
+ const m=e.target.closest('[data-m]');if(m){authView(m.dataset.m);return}
+ if(e.target.closest('[data-lo]')){await A.signOut(auth);U=P=null;authView();return}
+ if(e.target.closest('[data-re]')){await reloadSession();return}
+ /* 見取図: 番号を置く・選ぶ・外す */
+ if(CUR){
+  const un=e.target.closest('[data-unplace]');
+  if(un&&CUR.sel){const x=CUR.L.find(v=>v.id===CUR.sel);delete x.x;delete x.y;CUR.sel=null;drawPlan();
+   F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',x.id),{x:F.deleteField(),y:F.deleteField()}).catch(er=>toast(errMsg(er)));return}
+  const tl=e.target.closest('[data-ptool]');
+  if(tl){CUR.tool=tl.dataset.ptool;CUR.sel=CUR.selS=null;drawPlan();return}
+  const ro=e.target.closest('[data-rot]');
+  if(ro&&CUR.selS){const st=(CUR.s.stamps||[]).find(v=>v.id===CUR.selS);if(st){st.r=((st.r||0)+(+ro.dataset.rot)+360)%360;drawPlan();saveStamps()}return}
+  if(e.target.closest('[data-unstamp]')&&CUR.selS){CUR.s.stamps=(CUR.s.stamps||[]).filter(v=>v.id!==CUR.selS);CUR.selS=null;drawPlan();saveStamps();return}
+  const pl=e.target.closest('#plan');
+  if(pl){
+   const mk=e.target.closest('[data-mk]');
+   if(mk){CUR.sel=CUR.sel===mk.dataset.mk?null:mk.dataset.mk;CUR.selS=null;drawPlan();return}
+   const sk=e.target.closest('[data-st]');
+   if(sk){CUR.selS=CUR.selS===sk.dataset.st?null:sk.dataset.st;CUR.sel=null;drawPlan();return}
+   const r=pl.getBoundingClientRect(),x=+((e.clientX-r.left)/r.width*100).toFixed(1),y=+((e.clientY-r.top)/r.height*100).toFixed(1);
+   if(CUR.selS){const st=(CUR.s.stamps||[]).find(v=>v.id===CUR.selS);if(st){st.x=x;st.y=y}CUR.selS=null;drawPlan();saveStamps();return}
+   if(CUR.sel){const tg=CUR.L.find(v=>v.id===CUR.sel);tg.x=x;tg.y=y;CUR.sel=null;drawPlan();
+    F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',tg.id),{x,y}).catch(er=>toast(errMsg(er)));return}
+   if(CUR.tool!=='num'){
+    const arr=CUR.s.stamps||(CUR.s.stamps=[]);
+    if(arr.length>=60){toast('スタンプは1校につき60個までです');return}
+    const id='s'+Date.now().toString(36)+Math.floor(Math.random()*1296).toString(36);
+    arr.push({id,t:CUR.tool,x,y,r:0});CUR.selS=id;drawPlan();saveStamps();return}
+   const tg=CUR.L.find(v=>v.x==null);
+   if(!tg){toast(CUR.L.length?'番号はすべて置きました。スタンプを使うときは、上のボタンで種類を選んでください':'先に送迎ポイントを登録してください');return}
+   tg.x=x;tg.y=y;drawPlan();
+   F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',tg.id),{x,y}).catch(er=>toast(errMsg(er)));return}}
+ const f=e.target.closest('[data-fav]');if(f){const id=f.dataset.fav,on=!P.favs.includes(id);
+  P.favs=on?[...P.favs,id]:P.favs.filter(v=>v!==id);f.classList.toggle('on',on);
+  F.updateDoc(uref(),{favs:on?F.arrayUnion(id):F.arrayRemove(id)}).catch(er=>toast(errMsg(er)));return}
+ const t=e.target.closest('[data-t]');if(t){tf=t.dataset.t;app.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',b===t));drawList();return}
+ if(e.target.closest('#fv')){onlyFav=!onlyFav;$('#fv').setAttribute('aria-pressed',onlyFav);drawList()}});
+app.addEventListener('input',e=>{if(e.target.id==='q'){q=e.target.value;drawList()}});
+app.addEventListener('change',async e=>{
+ const i=e.target.closest('[data-photo],[data-plan]');if(!i||!i.files[0])return;
+ const isPlan=i.hasAttribute('data-plan'),s=SCH.find(v=>v.id===(i.dataset.photo||i.dataset.plan)),f=i.files[0];i.value='';
+ try{const u=await prep(f);if(!u)return;const key=isPlan?'plan':'photo';
+  await F.updateDoc(sref(s),{[key]:u});s[key]=u;toast('登録しました');detail(s,++tok)}
+ catch(er){toast(errMsg(er))}});
+</script></body></html>

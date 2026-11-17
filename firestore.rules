@@ -1,0 +1,58 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function profile()  { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    // 承認済み(status = active)の利用者だけが中身を見られる
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && profile().status == 'active';
+    }
+    function isAdmin() { return isActive() && profile().role == 'admin'; }
+
+    // 利用者: 自分で登録申請(承認待ち・一般権限だけ作れる)。承認・権限変更は管理者のみ
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name','office','email','status','role','favs','createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == 'member';
+      allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs']));
+      allow delete: if isAdmin();
+    }
+
+    // 学校マスター(校名・URL): 閲覧は承認済み全員、追加・削除・名前やURLの編集は管理者のみ
+    // 校門の写真(photo)・見取図の画像(plan)・見取図のスタンプ(stamps)・送迎ポイントの件数(pointCount)だけは承認済み全員が更新できる
+    match /schools/{sid} {
+      allow read: if isActive();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isActive()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['photo','plan','stamps','pointCount'])
+            && request.resource.data.get('pointCount', 0) >= 0
+            && request.resource.data.get('stamps', []).size() <= 60);
+
+      // 送迎ポイント: 追加・編集は承認済み全員、削除は作成者か管理者、並び順の変更は管理者のみ
+      match /points/{pid} {
+        allow read: if isActive();
+        allow create: if isActive() && request.resource.data.uid == request.auth.uid;
+        allow update: if isAdmin()
+          || (isActive()
+              && request.resource.data.order == resource.data.order
+              && request.resource.data.uid == resource.data.uid);
+        allow delete: if isAdmin() || (isActive() && resource.data.uid == request.auth.uid);
+      }
+    }
+
+    // お知らせ: 閲覧は承認済み全員、投稿は管理者のみ
+    match /notices/{nid} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+  }
+}

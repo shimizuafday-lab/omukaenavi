@@ -1,0 +1,78 @@
+/* ===== お迎えルールナビ 共通テーマ =====
+   使い方: <link rel="stylesheet" href="theme.css"> を読み込み、
+   <html data-theme="mint"> のテーマ名を変えるだけで配色が切り替わる。
+   フォント: <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" rel="stylesheet">
+*/
+
+/* ---------- 1. 色の決めごと(ここだけ変えれば全画面が変わる) ---------- */
+:root, [data-theme="mint"]{
+  --ink:#14342c;      /* 文字・枠線・影 */
+  --bg:#f1fbf7;       /* 画面の背景(追加した薄い色) */
+  --surface:#ffffff;  /* カード */
+  --soft:#98dbc6;     /* ミント: ヘッダー帯・面 */
+  --accent:#5bc8ac;   /* 主役: 主要ボタン・選択中 */
+  --sun:#e6d72a;      /* 黄: 小学校・お気に入り・目印 */
+  --blossom:#f18d9e;  /* ピンク: 特別支援・お知らせ */
+  --danger:#b3261e;   /* 削除・エラー(白文字OK) */
+  --on-ink:#ffffff;
+}
+[data-theme="teal"]{ /* 前の水色パレット(比較用) */
+  --ink:#17383b; --bg:#e3fdfd; --surface:#ffffff;
+  --soft:#a6e3e9; --accent:#71c9ce; --sun:#cbf1f5; --blossom:#71c9ce;
+  --danger:#b3261e; --on-ink:#ffffff;
+}
+/* 校種の色(カード・ラベル共通) */
+:root{
+  --t-elem:var(--sun); --t-mid:var(--soft); --t-sp:var(--blossom);
+  --radius:20px; --radius-pill:999px;
+  --pop:3px 3px 0 var(--ink);
+  --font:'M PLUS Rounded 1c','Hiragino Maru Gothic ProN','Hiragino Sans',sans-serif;
+  --ease:cubic-bezier(.2,.8,.2,1); --dur:.14s; --dur-lg:.35s;
+}
+
+/* ---------- 2. 基本 ---------- */
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-tap-highlight-color:transparent}
+button,input,textarea{font-family:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+
+/* ---------- 3. 部品 ---------- */
+.pop{border:2px solid var(--ink);box-shadow:var(--pop);border-radius:var(--radius)}
+.btn{min-height:48px;padding:0 20px;border-radius:var(--radius-pill);border:2px solid var(--ink);
+  box-shadow:var(--pop);background:var(--surface);font-size:14px;font-weight:800;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;
+  transition:transform var(--dur) var(--ease),box-shadow var(--dur) var(--ease)}
+.btn--primary{background:var(--accent)}            /* 文字は暗い色のまま(白だと読めない) */
+.btn--dark{background:var(--ink);color:var(--on-ink)}
+.btn--danger{background:var(--danger);color:#fff}
+.btn:active,.pop-press:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+.card{display:flex;gap:12px;align-items:center;padding:10px;background:var(--surface)}
+.tag{display:inline-block;padding:1px 8px;border:1.5px solid var(--ink);border-radius:10px;font-size:12px;font-weight:800}
+.tag--elem{background:var(--t-elem)} .tag--mid{background:var(--t-mid)} .tag--sp{background:var(--t-sp)}
+
+.seg{display:flex;gap:2px;padding:4px;background:var(--surface)}
+.seg button{flex:1;height:44px;border:0;border-radius:22px;background:transparent;font-size:13px;font-weight:800;
+  transition:background var(--dur),color var(--dur)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+
+.field{width:100%;border:2px solid var(--ink);border-radius:18px;padding:12px 16px;font-size:16px;background:var(--surface);box-shadow:var(--pop)}
+.fab{position:fixed;right:16px;bottom:92px;min-height:56px;padding:0 22px;border-radius:28px;background:var(--accent)}
+.navbar{position:fixed;left:16px;right:16px;bottom:16px;height:60px;padding:6px;border-radius:30px;background:var(--ink);display:flex;gap:4px}
+.navbar button{flex:1;border:0;border-radius:24px;background:transparent;color:var(--on-ink);font-weight:800;font-size:14px}
+.navbar button[aria-current="page"]{background:var(--accent);color:var(--ink)}
+
+/* ---------- 4. 動き(transform / opacity だけ。0.1〜0.35秒) ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(12px)}}
+.card{animation:rise var(--dur-lg) var(--ease) both;animation-delay:calc(var(--i,0)*40ms)}   /* style="--i:2" */
+@keyframes starPop{40%{transform:scale(1.35) rotate(-8deg)}}
+.fav.on svg{animation:starPop .3s var(--ease)}
+@keyframes toastIn{from{opacity:0;transform:translateY(16px)}}
+.toast{position:fixed;left:50%;bottom:92px;translate:-50% 0;padding:12px 20px;background:var(--ink);color:var(--on-ink);
+  border-radius:var(--radius-pill);font-weight:800;animation:toastIn var(--dur-lg) var(--ease)}
+@keyframes shimmer{to{background-position:-200% 0}}
+.skeleton{background:linear-gradient(90deg,var(--soft) 30%,var(--bg) 50%,var(--soft) 70%) 0 0/200% 100%;animation:shimmer 1.4s linear infinite;border-radius:12px}
+.lifting{transform:scale(1.03);box-shadow:6px 6px 0 var(--ink);transition:transform var(--dur),box-shadow var(--dur)}  /* 並び替えで持ち上げ中 */
+
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
