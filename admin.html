@@ -61,8 +61,8 @@ const short=n=>n.replace('静岡市立','');
 const kind=s=>s.type==='小学校'?'elem':s.type==='中学校'?'mid':'sp';
 const kLabel={elem:'小学校',mid:'中学校',sp:'特別支援'};
 const dt=(t,time)=>{const d=t?.toDate?.();return d?d.toLocaleDateString('ja-JP')+(time?' '+d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''):''};
-const NAV=[['pending','承認待ち'],['users','利用者'],['schools','学校データ'],['notices','お知らせ']];
-let U=null,P=null,tab='pending',S={users:[],schools:[],notices:[]},sq='',sf='all',selId=null;
+const NAV=[['users','利用者'],['schools','学校データ'],['notices','お知らせ']];
+let U=null,P=null,tab='users',S={users:[],schools:[],notices:[]},sq='',sf='all',selId=null;
 
 const hs=decodeURIComponent(location.hash.slice(1));if(NAV.some(n=>n[0]===hs))tab=hs;
 
@@ -76,7 +76,6 @@ watchSession(async(u,p)=>{U=u;P=p;
  try{await loadSchools()}catch(e){toast('学校住所の自動反映に失敗しました: '+errMsg(e))}
  badge();await show()});
 
-const pendingN=()=>S.users.filter(u=>u.status==='pending').length;
 function shell(){
  app.innerHTML=`<div class="wrap"><aside class="side"><div class="tit"><h1>お迎えルールナビ</h1><div class="sub">管理者メニュー</div></div>
  ${NAV.map(([k,l])=>`<button class="nv" data-tab="${k}" aria-current="${k===tab?'page':'false'}"><span>${l}</span>${k==='pending'?'<span class="badge" id="bg" hidden></span>':''}</button>`).join('')}
@@ -124,11 +123,11 @@ async function pending(){
 async function users(){
  await loadUsers();
  const L=S.users.filter(u=>u.status!=='pending').sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||String(a.name).localeCompare(String(b.name)));
- $('#main').innerHTML=`<h2>利用者</h2><p class="lead">承認済み・停止中・却下した人の一覧です(${L.length}人)。</p>
- <div class="col">${L.map(u=>{const me=u.id===U.uid,st=u.status==='active'?'':u.status==='rejected'?'却下済み':'停止中';
+ $('#main').innerHTML=`<h2>利用者</h2><p class="lead">登録されている利用者の一覧です(${L.length}人)。</p>
+ <div class="col">${L.map(u=>{const me=u.id===U.uid,st=u.status==='active'?'':u.status==='pending'?'承認待ち':u.status==='rejected'?'却下済み':'停止中';
   return `<div class="card pop"><div class="ava">${esc((u.name||'?')[0])}</div><div class="grow"><div class="nm">${esc(u.name)}${me?'(自分)':''}<small>${esc(u.office||'')}</small></div><div class="bd">${esc(u.email||'')}</div><div class="row" style="margin-top:6px"><span class="tag tag--${u.role==='admin'?'sp':'mid'}">${u.role==='admin'?'管理者':'一般'}</span>${st?`<span class="tag tag--no">${st}</span>`:''}</div></div>
   <div class="acts">${me?'':[
-   u.status==='active'?`<button class="btn sbtn" data-a="stop" data-id="${u.id}">利用停止</button>`:`<button class="btn btn--primary sbtn" data-a="approve" data-id="${u.id}">${u.status==='rejected'?'承認する':'再開する'}</button>`,
+   u.status==='active'?`<button class="btn sbtn" data-a="stop" data-id="${u.id}">利用停止</button>`:`<button class="btn btn--primary sbtn" data-a="approve" data-id="${u.id}">${u.status==='pending'?'利用開始':u.status==='rejected'?'承認する':'再開する'}</button>`,
    u.role==='admin'?`<button class="btn sbtn" data-a="member" data-id="${u.id}">一般に戻す</button>`:`<button class="btn sbtn" data-a="admin" data-id="${u.id}">管理者にする</button>`,
    `<button class="btn btn--danger sbtn" data-a="del" data-id="${u.id}">削除</button>`].join('')}</div></div>`}).join('')||'<p class="empty">まだいません。</p>'}</div>
  <p class="note">「削除」は利用者情報だけを消します。ログイン用のアカウントそのものは、Firebaseコンソールの Authentication から削除してください。</p>`}
