@@ -84,6 +84,7 @@ const CAT={
  '出入口':['<path d="M6 21V4h10v17M3 21h18M13 12.5v.01"/>','門・入口の位置'],
  '注意点':['<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/>','時間帯・禁止事項・注意することなど']};
 const dt=t=>t?.toDate?t.toDate().toLocaleDateString('ja-JP'):'';
+const referenceUrl=r=>typeof r==='string'?r:(r?.url||r?.img||r?.src||r?.secure_url||'');
 
 /* ---- 状態 ---- */
 let U=null,P=null,ready=false,SCH=[];
@@ -192,7 +193,8 @@ async function detail(s,t){
  ${Array.isArray(s.referenceImages)&&s.referenceImages.length?`<h3 class="fl" style="margin-top:28px">学校の参考画像</h3><div class="col" style="margin-top:10px">${s.referenceImages.map((im,i)=>`<a href="${esc(im.url)}" target="_blank" rel="noopener" style="display:block"><img src="${esc(im.url)}" alt="${esc(im.label||'学校の参考画像')} ${i+1}" loading="lazy" style="display:block;width:100%;max-height:380px;object-fit:contain;background:#fff;border:2px solid var(--ink);border-radius:var(--radius)"><div class="who">${esc(im.label||'学校の参考画像')} ${i+1}（タップで拡大）</div></a>`).join('')}</div>`:''}
  <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
  <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図をタップして番号を置く</p>
- <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label></main>
+ <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label>
+ ${Array.isArray(s.referenceImages)&&s.referenceImages.some(referenceUrl)?`<section style="margin-top:24px"><h3 class="fl">参考画像から見取図に設定</h3><p class="who">取り込み済みの参考画像を選ぶと、再アップロードせず見取図に設定できます。</p><div class="col">${s.referenceImages.map((r,i)=>{const u=referenceUrl(r);return u?`<div class="card pop"><img class="pimg" style="margin:0;max-height:180px" src="${esc(u)}" alt="参考画像 ${i+1}" loading="lazy"><button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-plan="${i}">この画像を見取図に設定</button></div>`:''}).join('')}</div></section>`:''}</main>
  <a class="btn btn--primary fab" href="#/s/${id}/new">＋ ポイント追加</a>${nav('schools')}`;
  drawPlan()}
 
@@ -290,6 +292,20 @@ app.addEventListener('click',async e=>{
  const m=e.target.closest('[data-m]');if(m){authView(m.dataset.m);return}
  if(e.target.closest('[data-lo]')){await A.signOut(auth);U=P=null;authView();return}
  if(e.target.closest('[data-re]')){await reloadSession();return}
+ /* 参考画像を見取図に設定 */
+ if(CUR){
+  const rp=e.target.closest('[data-ref-plan]');
+  if(rp){
+   const idx=Number(rp.dataset.refPlan),url=referenceUrl(CUR.s.referenceImages?.[idx]);
+   if(!url){toast('参考画像のURLを読み取れませんでした');return}
+   const target=CUR.s;rp.disabled=true;
+   try{
+    await F.updateDoc(sref(target),{plan:url});
+    target.plan=url;toast('見取図に設定しました');detail(target,++tok);
+   }catch(er){toast(errMsg(er));rp.disabled=false}
+   return;
+  }
+ }
  /* 見取図: 番号を置く・選ぶ・外す */
  if(CUR){
   const un=e.target.closest('[data-unplace]');
