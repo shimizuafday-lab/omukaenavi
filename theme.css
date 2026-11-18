@@ -51,6 +51,10 @@ button,input,textarea{font-family:inherit;color:inherit}
 .card{display:flex;gap:12px;align-items:center;padding:10px;background:var(--surface)}
 .tag{display:inline-block;padding:1px 8px;border:1.5px solid var(--ink);border-radius:10px;font-size:12px;font-weight:800}
 .tag--elem{background:var(--t-elem)} .tag--mid{background:var(--t-mid)} .tag--sp{background:var(--t-sp)}
+.tag--ward{background:var(--bg);border-color:rgba(20,52,44,.45)}
+.ward-filter{gap:4px;background:transparent;padding:0}
+.ward-filter button{height:36px;font-size:12px;background:var(--surface);border:1.5px solid rgba(20,52,44,.2)}
+.ward-filter button[aria-pressed="true"]{background:var(--soft);color:var(--ink);border-color:var(--ink)}
 
 .seg{display:flex;gap:2px;padding:4px;background:var(--surface)}
 .seg button{flex:1;height:44px;border:0;border-radius:22px;background:transparent;font-size:13px;font-weight:800;

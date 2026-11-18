@@ -87,7 +87,7 @@ const dt=t=>t?.toDate?t.toDate().toLocaleDateString('ja-JP'):'';
 
 /* ---- 状態 ---- */
 let U=null,P=null,ready=false,SCH=[];
-let q='',onlyFav=false,tf='all',tok=0,CUR=null;
+let q='',onlyFav=false,tf='all',wf='all',tok=0,CUR=null;
 const isAdmin=()=>P&&P.role==='admin';
 const uref=()=>F.doc(db,'users',U.uid);
 const sref=s=>F.doc(db,'schools',s.id);
@@ -100,6 +100,7 @@ async function init(){
  SCH=(await F.getDocs(F.collection(db,'schools'))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(TORD[x.type]??9)-(TORD[y.type]??9)||x.id.localeCompare(y.id));
  P.favs=Array.isArray(P.favs)?P.favs:[];
 }
+const wardOf=s=>{const a=String(s.address||((window.SCHOOLS||[]).find(x=>x.id===s.id)?.address)||'');return ['葵区','駿河区','清水区'].find(w=>a.includes(w))||''};
 const mapUrl=s=>`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s.address||s.name)}`;
 
 /* ---- 下部ナビ ---- */
@@ -138,15 +139,15 @@ const pendingView=()=>msgView('承認待ちです',`${esc(P.name)} さん、登�
 const card=(s,i)=>{const k=kind(s),f=P.favs.includes(s.id),n=s.pointCount||0;
  return `<div class="card pop" style="--i:${Math.min(i,8)}"><a class="lk" href="#/s/${encodeURIComponent(s.id)}">
  ${s.photo?`<img class="th" src="${esc(s.photo)}" alt="" loading="lazy">`:`<div class="th" style="background:var(--t-${k})">${esc(short(s.name)[0])}</div>`}
- <div class="grow"><div class="nm">${esc(short(s.name))}</div><div class="meta"><span class="tag tag--${k}">${kLabel[k]}</span>${n?`送迎ポイント ${n}件`:'まだ登録なし'}</div></div></a>
+ <div class="grow"><div class="nm">${esc(short(s.name))}</div><div class="meta">${wardOf(s)?`<span class="tag tag--ward">${wardOf(s)}</span>`:''}${n?`送迎ポイント ${n}件`:'まだ登録なし'}</div></div></a>
  <button class="btn fav ${f?'on':''}" data-fav="${esc(s.id)}" aria-label="お気に入り">${STAR}</button></div>`};
 function drawList(){
- const l=SCH.filter(s=>(tf==='all'||kind(s)===tf)&&(!onlyFav||P.favs.includes(s.id))&&s.name.includes(q.trim()));
+ const l=SCH.filter(s=>(tf==='all'||kind(s)===tf)&&(wf==='all'||wardOf(s)===wf)&&(!onlyFav||P.favs.includes(s.id))&&s.name.includes(q.trim()));
  $('#list').innerHTML=l.length?l.map(card).join(''):`<p class="empty">${!SCH.length?'学校データがまだ登録されていません。<br>管理ページで「初期登録」してください。':onlyFav?'お気に入りの学校はまだありません。☆を押すと登録できます。':'見つかりませんでした'}</p>`}
 function home(){
- app.innerHTML=`<header class="hd"><div class="sm">静岡市 ${SCH.length}校</div><h1>今日はどの学校へ？</h1>
+ app.innerHTML=`<header class="hd"><h1>今日はどの学校へ？</h1>
  <div class="row" style="margin-top:12px"><input id="q" class="field" placeholder="学校名で探す" aria-label="学校名で検索" value="${esc(q)}" style="flex:1;height:52px;border-radius:26px"><button id="fv" class="btn" aria-label="お気に入りだけ表示" aria-pressed="${onlyFav}" style="width:52px;padding:0;border-radius:50%">${STAR}</button></div></header>
- <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group" aria-label="校種">${[['all','すべて'],['elem','小学校'],['mid','中学校'],['sp','特別支援']].map(([k,l])=>`<button data-t="${k}" aria-pressed="${tf===k}">${k==='all'?'':`<i class="dot" style="background:var(--t-${k})"></i>`}${l}</button>`).join('')}</div><div id="list" class="col"></div></main>${nav('schools')}`;
+ <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group" aria-label="校種">${[['all','すべて'],['elem','小学校'],['mid','中学校'],['sp','特別支援']].map(([k,l])=>`<button data-t="${k}" aria-pressed="${tf===k}">${k==='all'?'':`<i class="dot" style="background:var(--t-${k})"></i>`}${l}</button>`).join('')}</div><div class="seg ward-filter" style="margin-top:8px;border-radius:24px" role="group" aria-label="区">${[['all','すべて'],['葵区','葵区'],['駿河区','駿河区'],['清水区','清水区']].map(([k,l])=>`<button data-ward="${k}" aria-pressed="${wf===k}">${l}</button>`).join('')}</div><div id="list" class="col"></div></main>${nav('schools')}`;
  drawList()}
 
 /* ---- お知らせ・設定 ---- */
@@ -188,6 +189,7 @@ async function detail(s,t){
  <div class="row" style="margin-top:14px">${s.website?`<a class="btn grow" href="${esc(s.website)}" target="_blank" rel="noopener">学校HPを開く</a>`:''}<a class="btn grow" href="${esc(mapUrl(s))}" target="_blank" rel="noopener">地図を見る</a></div>
  <div class="row sb" style="margin-top:26px"><h3>送迎ポイント <span class="tag tag--mid" style="font-size:15px">${L.length}</span></h3>${isAdmin()&&L.length>1?`<a class="btn" href="#/s/${id}/sort">${SWAP.replace('width="22" height="22"','width="18" height="18"')}並び替え</a>`:''}</div>
  <div class="col" style="margin-top:12px">${L.length?L.map((x,i)=>ptCard(s,x,i)).join(''):'<p class="empty">まだ送迎ポイントがありません。<br>現地で気づいたことを、最初の1件として登録しましょう。</p>'}</div>
+ ${Array.isArray(s.referenceImages)&&s.referenceImages.length?`<h3 class="fl" style="margin-top:28px">学校の参考画像</h3><div class="col" style="margin-top:10px">${s.referenceImages.map((im,i)=>`<a href="${esc(im.url)}" target="_blank" rel="noopener" style="display:block"><img src="${esc(im.url)}" alt="${esc(im.label||'学校の参考画像')} ${i+1}" loading="lazy" style="display:block;width:100%;max-height:380px;object-fit:contain;background:#fff;border:2px solid var(--ink);border-radius:var(--radius)"><div class="who">${esc(im.label||'学校の参考画像')} ${i+1}（タップで拡大）</div></a>`).join('')}</div>`:''}
  <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
  <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図をタップして番号を置く</p>
  <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label></main>
@@ -321,6 +323,7 @@ app.addEventListener('click',async e=>{
   P.favs=on?[...P.favs,id]:P.favs.filter(v=>v!==id);f.classList.toggle('on',on);
   F.updateDoc(uref(),{favs:on?F.arrayUnion(id):F.arrayRemove(id)}).catch(er=>toast(errMsg(er)));return}
  const t=e.target.closest('[data-t]');if(t){tf=t.dataset.t;app.querySelectorAll('[data-t]').forEach(b=>b.setAttribute('aria-pressed',b===t));drawList();return}
+ const w=e.target.closest('[data-ward]');if(w){wf=w.dataset.ward;app.querySelectorAll('[data-ward]').forEach(b=>b.setAttribute('aria-pressed',b===w));drawList();return}
  if(e.target.closest('#fv')){onlyFav=!onlyFav;$('#fv').setAttribute('aria-pressed',onlyFav);drawList()}});
 app.addEventListener('input',e=>{if(e.target.id==='q'){q=e.target.value;drawList()}});
 app.addEventListener('change',async e=>{
