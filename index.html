@@ -290,6 +290,20 @@ app.addEventListener('click',async e=>{
  const m=e.target.closest('[data-m]');if(m){authView(m.dataset.m);return}
  if(e.target.closest('[data-lo]')){await A.signOut(auth);U=P=null;authView();return}
  if(e.target.closest('[data-re]')){await reloadSession();return}
+ /* 参考画像を見取図に設定 */
+ if(CUR){
+  const rp=e.target.closest('[data-ref-plan]');
+  if(rp){
+   const idx=Number(rp.dataset.refPlan),url=referenceUrl(CUR.s.referenceImages?.[idx]);
+   if(!url){toast('参考画像のURLを読み取れませんでした');return}
+   const target=CUR.s;rp.disabled=true;
+   try{
+    await F.updateDoc(sref(target),{plan:url});
+    target.plan=url;toast('見取図に設定しました');detail(target,++tok);
+   }catch(er){toast(errMsg(er));rp.disabled=false}
+   return;
+  }
+ }
  /* 見取図: 番号を置く・選ぶ・外す */
  if(CUR){
   const un=e.target.closest('[data-unplace]');
