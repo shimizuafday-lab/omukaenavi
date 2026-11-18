@@ -61,8 +61,8 @@ const short=n=>n.replace('静岡市立','');
 const kind=s=>s.type==='小学校'?'elem':s.type==='中学校'?'mid':'sp';
 const kLabel={elem:'小学校',mid:'中学校',sp:'特別支援'};
 const dt=(t,time)=>{const d=t?.toDate?.();return d?d.toLocaleDateString('ja-JP')+(time?' '+d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''):''};
-const NAV=[['pending','承認待ち'],['users','利用者'],['schools','学校データ'],['notices','お知らせ']];
-let U=null,P=null,tab='pending',S={users:[],schools:[],notices:[]},sq='',sf='all',selId=null;
+const NAV=[['users','利用者'],['schools','学校データ'],['notices','お知らせ']];
+let U=null,P=null,tab='users',S={users:[],schools:[],notices:[]},sq='',sf='all',selId=null;
 
 const hs=decodeURIComponent(location.hash.slice(1));if(NAV.some(n=>n[0]===hs))tab=hs;
 
@@ -74,19 +74,17 @@ watchSession(async(u,p)=>{U=u;P=p;
  try{await loadUsers()}catch(e){toast(errMsg(e))}
  // 管理画面を開いたタイミングで、学校住所の空欄をschools.jsから自動補完
  try{await loadSchools()}catch(e){toast('学校住所の自動反映に失敗しました: '+errMsg(e))}
- badge();await show()});
+ await show()});
 
-const pendingN=()=>S.users.filter(u=>u.status==='pending').length;
 function shell(){
  app.innerHTML=`<div class="wrap"><aside class="side"><div class="tit"><h1>お迎えルールナビ</h1><div class="sub">管理者メニュー</div></div>
- ${NAV.map(([k,l])=>`<button class="nv" data-tab="${k}" aria-current="${k===tab?'page':'false'}"><span>${l}</span>${k==='pending'?'<span class="badge" id="bg" hidden></span>':''}</button>`).join('')}
+ ${NAV.map(([k,l])=>`<button class="nv" data-tab="${k}" aria-current="${k===tab?'page':'false'}"><span>${l}</span></button>`).join('')}
  <div class="bt"><a class="btn" href="index.html">アプリ画面に戻る</a><button class="lo" id="lo">${esc(P.name)} さん／ログアウト</button></div></aside><main id="main"></main></div>`;
  $('#lo').onclick=async()=>{await A.signOut(auth);location.href='index.html'}}
-function badge(){const b=$('#bg');if(!b)return;const n=pendingN();b.textContent=n;b.hidden=!n}
 async function show(){
  app.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'page':'false'));
  $('#main').innerHTML='<div class="skeleton" style="height:90px"></div>';scrollTo(0,0);
- try{await ({pending,users,schools,notices})[tab]();badge()}catch(e){$('#main').innerHTML=`<p class="empty">読み込めませんでした。<br>${esc(errMsg(e))}</p>`}}
+ try{await ({users,schools,notices})[tab]()}catch(e){$('#main').innerHTML=`<p class="empty">読み込めませんでした。<br>${esc(errMsg(e))}</p>`}}
 async function loadUsers(){S.users=(await F.getDocs(F.collection(db,'users'))).docs.map(d=>({id:d.id,...d.data()}))}
 async function loadSchools(){
  let docs=(await F.getDocs(F.collection(db,'schools'))).docs;
@@ -109,33 +107,21 @@ async function loadSchools(){
  S.schools=docs.map(d=>({id:d.id,...d.data()})).sort(byId);
 }
 
-/* ===== 承認待ち ===== */
-async function pending(){
- await loadUsers();
- const L=S.users.filter(u=>u.status==='pending').sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
- const act=S.users.filter(u=>u.status==='active').length,ad=S.users.filter(u=>u.status==='active'&&u.role==='admin').length;
- $('#main').innerHTML=`<h2>承認待ち</h2><p class="lead">新しく登録した人は、承認されるまで学校の情報を見られません。</p>
- <div class="stats"><div class="stat pop pend"><b>${L.length}</b>承認待ち</div><div class="stat pop" style="background:var(--soft)"><b>${act}</b>利用者</div><div class="stat pop" style="background:var(--blossom)"><b>${ad}</b>管理者</div></div>
- <div class="col">${L.map(u=>`<div class="card pop"><div class="ava">${esc((u.name||'?')[0])}</div><div class="grow"><div class="nm">${esc(u.name)}<small>${esc(u.office||'')}</small></div><div class="bd">${esc(u.email||'')}　/　申請 ${dt(u.createdAt,true)}</div></div>
-  <div class="acts"><select class="tagsel" data-role="${u.id}" aria-label="権限"><option value="member">権限: 一般</option><option value="admin">権限: 管理者</option></select><button class="btn sbtn" data-a="reject" data-id="${u.id}">却下</button><button class="btn btn--primary sbtn" data-a="approve" data-id="${u.id}">承認</button></div></div>`).join('')||'<p class="empty">承認待ちの人はいません。</p>'}</div>
- <p class="note">承認すると、その人にすぐ学校の情報が表示されます。</p>`}
-
 /* ===== 利用者 ===== */
 async function users(){
  await loadUsers();
- const L=S.users.filter(u=>u.status!=='pending').sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||String(a.name).localeCompare(String(b.name)));
- $('#main').innerHTML=`<h2>利用者</h2><p class="lead">承認済み・停止中・却下した人の一覧です(${L.length}人)。</p>
- <div class="col">${L.map(u=>{const me=u.id===U.uid,st=u.status==='active'?'':u.status==='rejected'?'却下済み':'停止中';
+ const L=S.users.slice().sort((a,b)=>(a.role==='admin'?0:1)-(b.role==='admin'?0:1)||String(a.name).localeCompare(String(b.name)));
+ $('#main').innerHTML=`<h2>利用者</h2><p class="lead">登録されている利用者の一覧です(${L.length}人)。</p>
+ <div class="col">${L.map(u=>{const me=u.id===U.uid,st=u.status==='active'?'':u.status==='pending'?'承認待ち':u.status==='rejected'?'却下済み':'停止中';
   return `<div class="card pop"><div class="ava">${esc((u.name||'?')[0])}</div><div class="grow"><div class="nm">${esc(u.name)}${me?'(自分)':''}<small>${esc(u.office||'')}</small></div><div class="bd">${esc(u.email||'')}</div><div class="row" style="margin-top:6px"><span class="tag tag--${u.role==='admin'?'sp':'mid'}">${u.role==='admin'?'管理者':'一般'}</span>${st?`<span class="tag tag--no">${st}</span>`:''}</div></div>
   <div class="acts">${me?'':[
-   u.status==='active'?`<button class="btn sbtn" data-a="stop" data-id="${u.id}">利用停止</button>`:`<button class="btn btn--primary sbtn" data-a="approve" data-id="${u.id}">${u.status==='rejected'?'承認する':'再開する'}</button>`,
+   u.status==='active'?`<button class="btn sbtn" data-a="stop" data-id="${u.id}">利用停止</button>`:`<button class="btn btn--primary sbtn" data-a="approve" data-id="${u.id}">${u.status==='pending'?'利用開始':u.status==='rejected'?'利用再開':'再開する'}</button>`,
    u.role==='admin'?`<button class="btn sbtn" data-a="member" data-id="${u.id}">一般に戻す</button>`:`<button class="btn sbtn" data-a="admin" data-id="${u.id}">管理者にする</button>`,
    `<button class="btn btn--danger sbtn" data-a="del" data-id="${u.id}">削除</button>`].join('')}</div></div>`}).join('')||'<p class="empty">まだいません。</p>'}</div>
  <p class="note">「削除」は利用者情報だけを消します。ログイン用のアカウントそのものは、Firebaseコンソールの Authentication から削除してください。</p>`}
 async function userAct(a,id,btn){
  const r=F.doc(db,'users',id),u=S.users.find(x=>x.id===id);
  if(a==='del'){if(!confirm(`${u.name} さんを削除しますか?`))return;await F.deleteDoc(r)}
- else if(a==='reject'){if(!confirm(`${u.name} さんの申請を却下しますか?`))return;await F.updateDoc(r,{status:'rejected'})}
  else if(a==='approve'){const sel=btn.closest('.card').querySelector('[data-role]');await F.updateDoc(r,{status:'active',...(sel?{role:sel.value}:{})})}
  else if(a==='admin'){if(!confirm(`${u.name} さんを管理者にしますか?`))return;await F.updateDoc(r,{role:'admin'})}
  else await F.updateDoc(r,a==='stop'?{status:'disabled'}:{role:'member'});
