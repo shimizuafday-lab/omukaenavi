@@ -12,13 +12,13 @@ service cloud.firestore {
     }
     function isAdmin() { return isActive() && profile().role == 'admin'; }
 
-    // 利用者: 自分で登録申請(承認待ち・一般権限だけ作れる)。承認・権限変更は管理者のみ
+    // 利用者: 自分で登録(有効な一般権限だけ作れる)。権限変更は管理者のみ
     match /users/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['name','office','email','status','role','favs','createdAt'])
-        && request.resource.data.status == 'pending'
+        && request.resource.data.status == 'active'
         && request.resource.data.role == 'member';
       allow update: if isAdmin()
         || (signedIn() && request.auth.uid == uid

@@ -113,12 +113,12 @@ const msgView=(title,body,btns='')=>{app.innerHTML=`<header class="hd"><div clas
 function authView(mode='login'){const reg=mode==='reg';
  app.innerHTML=`<header class="hd"><div class="sm">静岡市 送迎ポイント共有</div><h1>お迎えルールナビ</h1></header>
  <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group">${[['login','ログイン'],['reg','新規登録']].map(([k,l])=>`<button data-m="${k}" aria-pressed="${k===mode}">${l}</button>`).join('')}</div>
- ${reg?'<p class="note" style="margin-top:14px">登録後、管理者が承認するとご利用いただけます。</p>':''}
+ ${reg?'<p class="note" style="margin-top:14px">登録後すぐにご利用いただけます。</p>':''}
  ${reg?`<h3 class="fl">お名前</h3><input id="nm" class="field" autocomplete="name" placeholder="例:山田 花子">
  <h3 class="fl">事業所名・所属</h3><input id="of" class="field" placeholder="例:○○放課後デイ">`:''}
  <h3 class="fl">メールアドレス</h3><input id="em" class="field" type="email" autocomplete="email" inputmode="email">
  <h3 class="fl">パスワード${reg?'(6文字以上)':''}</h3><input id="pw" class="field" type="password" autocomplete="${reg?'new-password':'current-password'}">
- <button id="go" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:24px;font-size:17px">${reg?'登録を申請する':'ログイン'}</button>
+ <button id="go" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:24px;font-size:17px">${reg?'新規登録する':'ログイン'}</button>
  ${reg?'':'<button id="rs" class="btn" style="width:100%;margin-top:14px">パスワードを忘れた</button>'}</main>`;
  const val=id=>($(id)?.value||'').trim();
  $('#go').onclick=async()=>{const em=val('#em'),pw=$('#pw').value;
@@ -128,7 +128,7 @@ function authView(mode='login'){const reg=mode==='reg';
    if(reg){const nm=val('#nm'),of=val('#of');if(!nm){toast('お名前を入力してください');b.disabled=false;return}
     hold.on=true;
     try{const c=await A.createUserWithEmailAndPassword(auth,em,pw);
-     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm,office:of,email:em,status:'pending',role:'member',favs:[],createdAt:F.serverTimestamp()})}
+     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm,office:of,email:em,status:'active',role:'member',favs:[],createdAt:F.serverTimestamp()})}
     finally{hold.on=false;if(auth.currentUser)await reloadSession()}
    }else await A.signInWithEmailAndPassword(auth,em,pw);
   }catch(e){toast(errMsg(e));b.disabled=false}};
