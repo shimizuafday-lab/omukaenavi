@@ -190,7 +190,7 @@ async function detail(s,t){
  <div class="row" style="margin-top:14px">${s.website?`<a class="btn grow" href="${esc(s.website)}" target="_blank" rel="noopener">学校HPを開く</a>`:''}<a class="btn grow" href="${esc(mapUrl(s))}" target="_blank" rel="noopener">地図を見る</a></div>
  <div class="row sb" style="margin-top:26px"><h3>送迎ポイント <span class="tag tag--mid" style="font-size:15px">${L.length}</span></h3>${isAdmin()&&L.length>1?`<a class="btn" href="#/s/${id}/sort">${SWAP.replace('width="22" height="22"','width="18" height="18"')}並び替え</a>`:''}</div>
  <div class="col" style="margin-top:12px">${L.length?L.map((x,i)=>ptCard(s,x,i)).join(''):'<p class="empty">まだ送迎ポイントがありません。<br>現地で気づいたことを、最初の1件として登録しましょう。</p>'}</div>
- ${Array.isArray(s.referenceImages)&&s.referenceImages.length?`<h3 class="fl" style="margin-top:28px">学校の参考画像</h3><div class="col" style="margin-top:10px">${s.referenceImages.map((im,i)=>`<a href="${esc(im.url)}" target="_blank" rel="noopener" style="display:block"><img src="${esc(im.url)}" alt="${esc(im.label||'学校の参考画像')} ${i+1}" loading="lazy" style="display:block;width:100%;max-height:380px;object-fit:contain;background:#fff;border:2px solid var(--ink);border-radius:var(--radius)"><div class="who">${esc(im.label||'学校の参考画像')} ${i+1}（タップで拡大）</div></a>`).join('')}</div>`:''}
+ ${Array.isArray(s.referenceImages)&&s.referenceImages.length?`<h3 class="fl" style="margin-top:28px">学校の参考画像</h3><div class="col" style="margin-top:10px">${s.referenceImages.map((im,i)=>{const u=referenceUrl(im);return `<div class="card pop"><a href="${esc(u)}" target="_blank" rel="noopener" style="display:block"><img src="${esc(u)}" alt="${esc(im.label||'学校の参考画像')} ${i+1}" loading="lazy" style="display:block;width:100%;max-height:380px;object-fit:contain;background:#fff;border:2px solid var(--ink);border-radius:var(--radius)"><div class="who">${esc(im.label||'学校の参考画像')} ${i+1}（タップで拡大）</div></a>${isAdmin()?`<button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-delete="${i}">参考画像を削除</button>`:''}</div>`}).join('')}</div>`:''}
  <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
  <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図をタップして番号を置く</p>
  <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label>
@@ -292,6 +292,27 @@ app.addEventListener('click',async e=>{
  const m=e.target.closest('[data-m]');if(m){authView(m.dataset.m);return}
  if(e.target.closest('[data-lo]')){await A.signOut(auth);U=P=null;authView();return}
  if(e.target.closest('[data-re]')){await reloadSession();return}
+  /* 参考画像を一覧から削除（Cloudinaryの実ファイルは残す） */
+  if(CUR){
+   const rd=e.target.closest('[data-ref-delete]');
+   if(rd){
+    if(!isAdmin()){toast('管理者のみ削除できます');return}
+    const idx=Number(rd.dataset.refDelete),target=CUR.s;
+    const images=Array.isArray(target.referenceImages)?target.referenceImages:[];
+    if(!Number.isInteger(idx)||idx<0||idx>=images.length)return;
+    const label=images[idx]?.label||'この参考画像';
+    if(!confirm(`「${label}」を参考画像一覧から削除しますか？\n\n見取図に設定済みの場合、見取図はそのまま残ります。`))return;
+    rd.disabled=true;
+    const next=images.filter((_,i)=>i!==idx);
+    try{
+     await F.updateDoc(sref(target),{referenceImages:next});
+     target.referenceImages=next;
+     toast('参考画像を一覧から削除しました');
+     detail(target,++tok);
+    }catch(er){toast(errMsg(er));rd.disabled=false}
+    return;
+   }
+  }
  /* 参考画像を見取図に設定 */
  if(CUR){
   const rp=e.target.closest('[data-ref-plan]');
