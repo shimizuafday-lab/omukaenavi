@@ -84,6 +84,7 @@ const CAT={
  '出入口':['<path d="M6 21V4h10v17M3 21h18M13 12.5v.01"/>','門・入口の位置'],
  '注意点':['<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17v.01"/>','時間帯・禁止事項・注意することなど']};
 const dt=t=>t?.toDate?t.toDate().toLocaleDateString('ja-JP'):'';
+const referenceUrl=r=>typeof r==='string'?r:(r?.url||r?.img||r?.src||r?.secure_url||'');
 
 /* ---- 状態 ---- */
 let U=null,P=null,ready=false,SCH=[];
@@ -190,7 +191,8 @@ async function detail(s,t){
  <div class="col" style="margin-top:12px">${L.length?L.map((x,i)=>ptCard(s,x,i)).join(''):'<p class="empty">まだ送迎ポイントがありません。<br>現地で気づいたことを、最初の1件として登録しましょう。</p>'}</div>
  <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
  <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図をタップして番号を置く</p>
- <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label></main>
+ <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label>
+ ${Array.isArray(s.referenceImages)&&s.referenceImages.some(referenceUrl)?`<section style="margin-top:24px"><h3 class="fl">参考画像から見取図に設定</h3><p class="who">取り込み済みの参考画像を選ぶと、再アップロードせず見取図に設定できます。</p><div class="col">${s.referenceImages.map((r,i)=>{const u=referenceUrl(r);return u?`<div class="card pop"><img class="pimg" style="margin:0;max-height:180px" src="${esc(u)}" alt="参考画像 ${i+1}" loading="lazy"><button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-plan="${i}">この画像を見取図に設定</button></div>`:''}).join('')}</div></section>`:''}</main>
  <a class="btn btn--primary fab" href="#/s/${id}/new">＋ ポイント追加</a>${nav('schools')}`;
  drawPlan()}
 
