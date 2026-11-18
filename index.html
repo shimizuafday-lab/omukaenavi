@@ -119,6 +119,8 @@ function authView(mode='login'){const reg=mode==='reg';
  <h3 class="fl">メールアドレス</h3><input id="em" class="field" type="email" autocomplete="email" inputmode="email">
  <h3 class="fl">パスワード${reg?'(6文字以上)':''}</h3><input id="pw" class="field" type="password" autocomplete="${reg?'new-password':'current-password'}">
  <button id="go" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:24px;font-size:17px">${reg?'新規登録する':'ログイン'}</button>
+ <div style="display:flex;align-items:center;gap:12px;margin:20px 0 12px;color:var(--muted);font-size:13px"><span style="height:1px;background:var(--line);flex:1"></span>または<span style="height:1px;background:var(--line);flex:1"></span></div>
+ <button id="google" class="btn" style="width:100%;min-height:54px">Googleアカウントで${reg?'登録':'ログイン'}</button>
  ${reg?'':'<button id="rs" class="btn" style="width:100%;margin-top:14px">パスワードを忘れた</button>'}</main>`;
  const val=id=>($(id)?.value||'').trim();
  $('#go').onclick=async()=>{const em=val('#em'),pw=$('#pw').value;
@@ -132,6 +134,35 @@ function authView(mode='login'){const reg=mode==='reg';
     finally{hold.on=false;if(auth.currentUser)await reloadSession()}
    }else await A.signInWithEmailAndPassword(auth,em,pw);
   }catch(e){toast(errMsg(e));b.disabled=false}};
+ const google=$('#google');
+ google.onclick=async()=>{
+  google.disabled=true;
+  hold.on=true;
+  try{
+   const provider=new A.GoogleAuthProvider();
+   provider.setCustomParameters({prompt:'select_account'});
+   const result=await A.signInWithPopup(auth,provider);
+   const userRef=F.doc(db,'users',result.user.uid);
+   const profile=await F.getDoc(userRef);
+   if(!profile.exists()){
+    await F.setDoc(userRef,{
+     name:result.user.displayName||result.user.email?.split('@')[0]||'Googleユーザー',
+     office:'',email:result.user.email||'',status:'active',role:'member',favs:[],
+     createdAt:F.serverTimestamp()
+    });
+   }
+  }catch(e){
+   if(e?.code==='auth/account-exists-with-different-credential'){
+    toast('このメールアドレスは別の方法で登録済みです。従来のメールアドレス・パスワードでログインしてください');
+   }else if(e?.code!=='auth/popup-closed-by-user'&&e?.code!=='auth/cancelled-popup-request'){
+    toast(errMsg(e));
+   }
+  }finally{
+   hold.on=false;
+   if(auth.currentUser)await reloadSession();
+   google.disabled=false;
+  }
+ };
  const rs=$('#rs');if(rs)rs.onclick=async()=>{const em=val('#em');if(!em){toast('メールアドレスを入力してください');return}
   try{await A.sendPasswordResetEmail(auth,em);toast('再設定メールを送りました')}catch(e){toast(errMsg(e))}}}
 const pendingView=()=>msgView('承認待ちです',`${esc(P.name)} さん、登録ありがとうございます。<br>管理者の承認が終わるとご利用いただけます。`,'<button class="btn btn--primary" data-re>承認されたか確認する</button>');
