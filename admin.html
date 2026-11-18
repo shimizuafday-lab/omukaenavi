@@ -74,14 +74,13 @@ watchSession(async(u,p)=>{U=u;P=p;
  try{await loadUsers()}catch(e){toast(errMsg(e))}
  // 管理画面を開いたタイミングで、学校住所の空欄をschools.jsから自動補完
  try{await loadSchools()}catch(e){toast('学校住所の自動反映に失敗しました: '+errMsg(e))}
- badge();await show()});
+ await show()});
 
 function shell(){
  app.innerHTML=`<div class="wrap"><aside class="side"><div class="tit"><h1>お迎えルールナビ</h1><div class="sub">管理者メニュー</div></div>
  ${NAV.map(([k,l])=>`<button class="nv" data-tab="${k}" aria-current="${k===tab?'page':'false'}"><span>${l}</span></button>`).join('')}
  <div class="bt"><a class="btn" href="index.html">アプリ画面に戻る</a><button class="lo" id="lo">${esc(P.name)} さん／ログアウト</button></div></aside><main id="main"></main></div>`;
  $('#lo').onclick=async()=>{await A.signOut(auth);location.href='index.html'}}
-function badge(){const b=$('#bg');if(!b)return;const n=pendingN();b.textContent=n;b.hidden=!n}
 async function show(){
  app.querySelectorAll('[data-tab]').forEach(b=>b.setAttribute('aria-current',b.dataset.tab===tab?'page':'false'));
  $('#main').innerHTML='<div class="skeleton" style="height:90px"></div>';scrollTo(0,0);
@@ -123,7 +122,6 @@ async function users(){
 async function userAct(a,id,btn){
  const r=F.doc(db,'users',id),u=S.users.find(x=>x.id===id);
  if(a==='del'){if(!confirm(`${u.name} さんを削除しますか?`))return;await F.deleteDoc(r)}
- else if(a==='reject'){if(!confirm(`${u.name} さんの申請を却下しますか?`))return;await F.updateDoc(r,{status:'rejected'})}
  else if(a==='approve'){const sel=btn.closest('.card').querySelector('[data-role]');await F.updateDoc(r,{status:'active',...(sel?{role:sel.value}:{})})}
  else if(a==='admin'){if(!confirm(`${u.name} さんを管理者にしますか?`))return;await F.updateDoc(r,{role:'admin'})}
  else await F.updateDoc(r,a==='stop'?{status:'disabled'}:{role:'member'});
