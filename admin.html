@@ -62,7 +62,7 @@ const kind=s=>s.type==='小学校'?'elem':s.type==='中学校'?'mid':'sp';
 const kLabel={elem:'小学校',mid:'中学校',sp:'特別支援'};
 const dt=(t,time)=>{const d=t?.toDate?.();return d?d.toLocaleDateString('ja-JP')+(time?' '+d.toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit'}):''):''};
 const NAV=[['users','利用者'],['schools','学校データ'],['notices','お知らせ']];
-let U=null,P=null,tab='users',S={users:[],schools:[],notices:[]},sq='',sf='all',selId=null;
+let U=null,P=null,tab='users',S={users:[],schools:[],notices:[]},sq='',selId=null;
 
 const hs=decodeURIComponent(location.hash.slice(1));if(NAV.some(n=>n[0]===hs))tab=hs;
 
@@ -132,11 +132,11 @@ async function schools(keep){
  if(!keep||!S.schools.length)await loadSchools();
  const have=new Set(S.schools.map(s=>s.id)),miss=(window.SCHOOLS||[]).filter(s=>!have.has(s.id));
  const noAddr=S.schools.filter(s=>!s.address).length;
- const l=S.schools.filter(s=>(sf==='all'||!s.address)&&s.name.includes(sq.trim()));
+ const l=S.schools.filter(s=>s.name.includes(sq.trim()));
  $('#main').innerHTML=`<div class="top"><div><h2>学校データ</h2><p class="lead">校名・公式HP・住所を管理します。住所は、アプリの「地図を見る」ボタンの飛び先になります。</p></div>
  <div class="acts"><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
  <div class="two"><div><input id="sq" class="field pop" style="box-shadow:var(--pop)" placeholder="学校名で探す" aria-label="学校名で探す" value="${esc(sq)}">
- <div class="seg pop" style="border-radius:28px;margin-top:12px" role="group"><button data-f="all" aria-pressed="${sf==='all'}">すべて</button><button data-f="no" aria-pressed="${sf==='no'}">住所なし ${noAddr}</button></div>
+
  <div class="col" style="margin-top:12px">${l.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}</div></div>
  <div class="panel pop" id="panel"></div></div>`;
  panel();
@@ -179,7 +179,6 @@ async function noticeAct(a,id){
 /* ===== クリック処理 ===== */
 app.addEventListener('click',async e=>{
  const t=e.target.closest('[data-tab]');if(t){tab=t.dataset.tab;return show()}
- const f=e.target.closest('[data-f]');if(f){sf=f.dataset.f;return schools(true)}
  const pk=e.target.closest('[data-pick]');if(pk){selId=pk.dataset.pick;app.querySelectorAll('.sch').forEach(c=>c.classList.toggle('sel',c===pk));return panel()}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  try{
