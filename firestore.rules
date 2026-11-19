@@ -16,9 +16,16 @@ service cloud.firestore {
       allow list: if isAdmin();
       allow create: if signedIn() && request.auth.uid == uid
         && request.resource.data.keys().hasOnly(['name','office','email','status','role','favs','createdAt'])
+        && request.resource.data.office is string
+        && request.resource.data.office.size() > 0
         && request.resource.data.status == 'pending'
         && request.resource.data.role == 'member';
       allow update: if isAdmin()
+        || (signedIn() && request.auth.uid == uid
+            && (!('office' in resource.data) || resource.data.office == '' || resource.data.office == null)
+            && request.resource.data.office is string
+            && request.resource.data.office.size() > 0
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['office']))
         || (isActive() && request.auth.uid == uid
             && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['favs']));
       allow delete: if isAdmin();
@@ -38,11 +45,12 @@ service cloud.firestore {
     match /requests/{rid} {
       allow create: if isActive()
         && request.resource.data.uid == request.auth.uid
+        && request.resource.data.office == profile().office
         && request.resource.data.status == 'pending'
         && request.resource.data.action in ['point-create','point-update','point-delete','point-position','stamps','school-fields']
         && request.resource.data.schoolId is string
         && request.resource.data.data is map
-        && request.resource.data.keys().hasOnly(['action','schoolId','pointId','data','uid','userName','status','createdAt']);
+        && request.resource.data.keys().hasOnly(['action','schoolId','pointId','data','uid','office','userName','status','createdAt']);
       allow read: if isAdmin();
       allow update, delete: if isAdmin();
     }

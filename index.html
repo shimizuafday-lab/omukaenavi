@@ -96,7 +96,7 @@ const pcol=s=>F.collection(db,'schools',s.id,'points');
 const getPts=async s=>(await F.getDocs(F.query(pcol(s),F.orderBy('order')))).docs.map(d=>({id:d.id,...d.data()}));
 // 一般ユーザーの変更は公開データに触れず、審査申請として別保存する
 async function submitRequest(action,schoolId,data={},pointId=null){
- await F.addDoc(F.collection(db,'requests'),{action,schoolId,pointId,data,uid:U.uid,userName:P.name||U.email||'利用者',status:'pending',createdAt:F.serverTimestamp()});
+ await F.addDoc(F.collection(db,'requests'),{action,schoolId,pointId,data,uid:U.uid,office:P.office||'',userName:P.office||'事業所名未登録',status:'pending',createdAt:F.serverTimestamp()});
  toast('申請を送信しました。管理者の承認後に反映されます');
 }
 const saveStamps=()=>isAdmin()?F.updateDoc(sref(CUR.s),{stamps:CUR.s.stamps||[]}).catch(er=>toast(errMsg(er))):submitRequest('stamps',CUR.s.id,{stamps:CUR.s.stamps||[]});
@@ -119,8 +119,8 @@ function authView(mode='login'){const reg=mode==='reg';
  app.innerHTML=`<header class="hd"><div class="sm">静岡市 送迎ポイント共有</div><h1>お迎えルールナビ</h1></header>
  <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group">${[['login','ログイン'],['reg','新規登録']].map(([k,l])=>`<button data-m="${k}" aria-pressed="${k===mode}">${l}</button>`).join('')}</div>
  ${reg?'<p class="note" style="margin-top:14px">登録後、管理者の利用承認が完了すると閲覧できます。</p>':''}
- ${reg?`<h3 class="fl">お名前</h3><input id="nm" class="field" autocomplete="name" placeholder="例:山田 花子">
- <h3 class="fl">事業所名・所属</h3><input id="of" class="field" placeholder="例:○○放課後デイ">`:''}
+ ${reg?`<h3 class="fl">事業所名 <span style="color:#c33">(必須)</span></h3><input id="of" class="field" required placeholder="例:○○放課後等デイサービス">
+ <h3 class="fl">お名前 <span style="color:var(--muted)">(任意)</span></h3><input id="nm" class="field" autocomplete="name" placeholder="例:山田 花子">`:''}
  <h3 class="fl">メールアドレス</h3><input id="em" class="field" type="email" autocomplete="email" inputmode="email">
  <h3 class="fl">パスワード${reg?'(6文字以上)':''}</h3><input id="pw" class="field" type="password" autocomplete="${reg?'new-password':'current-password'}">
  <button id="go" class="btn btn--dark" style="width:100%;min-height:56px;margin-top:24px;font-size:17px">${reg?'新規登録する':'ログイン'}</button>
@@ -132,10 +132,10 @@ function authView(mode='login'){const reg=mode==='reg';
   if(!em||!pw){toast('メールとパスワードを入力してください');return}
   const b=$('#go');b.disabled=true;
   try{
-   if(reg){const nm=val('#nm'),of=val('#of');if(!nm){toast('お名前を入力してください');b.disabled=false;return}
+   if(reg){const nm=val('#nm'),of=val('#of');if(!of){toast('事業所名を入力してください');b.disabled=false;return}
     hold.on=true;
     try{const c=await A.createUserWithEmailAndPassword(auth,em,pw);
-     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm,office:of,email:em,status:'pending',role:'member',favs:[],createdAt:F.serverTimestamp()})}
+     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm||of,office:of,email:em,status:'pending',role:'member',favs:[],createdAt:F.serverTimestamp()})}
     finally{hold.on=false;if(auth.currentUser)await reloadSession()}
    }else await A.signInWithEmailAndPassword(auth,em,pw);
   }catch(e){toast(errMsg(e));b.disabled=false}};
@@ -147,15 +147,7 @@ function authView(mode='login'){const reg=mode==='reg';
    const provider=new A.GoogleAuthProvider();
    provider.setCustomParameters({prompt:'select_account'});
    const result=await A.signInWithPopup(auth,provider);
-   const userRef=F.doc(db,'users',result.user.uid);
-   const profile=await F.getDoc(userRef);
-   if(!profile.exists()){
-    await F.setDoc(userRef,{
-     name:result.user.displayName||result.user.email?.split('@')[0]||'Googleユーザー',
-     office:'',email:result.user.email||'',status:'pending',role:'member',favs:[],
-     createdAt:F.serverTimestamp()
-    });
-   }
+   // Googleの新規利用者は事業所名入力画面へ進み、入力完了後にプロフィールを作成する
   }catch(e){
    if(e?.code==='auth/account-exists-with-different-credential'){
     toast('このメールアドレスは別の方法で登録済みです。従来のメールアドレス・パスワードでログインしてください');
@@ -170,7 +162,10 @@ function authView(mode='login'){const reg=mode==='reg';
  };
  const rs=$('#rs');if(rs)rs.onclick=async()=>{const em=val('#em');if(!em){toast('メールアドレスを入力してください');return}
   try{await A.sendPasswordResetEmail(auth,em);toast('再設定メールを送りました')}catch(e){toast(errMsg(e))}}}
-const pendingView=()=>msgView('承認待ちです',`${esc(P.name)} さん、登録ありがとうございます。<br>管理者の承認が終わるとご利用いただけます。`,'<button class="btn btn--primary" data-re>承認されたか確認する</button>');
+function officeSetupView(){
+ app.innerHTML=`<header class="hd"><div class="sm">静岡市 送迎ポイント共有</div><h1>事業所情報の登録</h1></header><main style="padding:16px"><div class="box pop"><p class="note">おむかえナビを利用するため、所属する事業所名を入力してください。事業所名の登録が完了するまで、投稿・閲覧機能は利用できません。</p><h3 class="fl">事業所名 <span style="color:#c33">(必須)</span></h3><input id="office-setup" class="field" required maxlength="100" placeholder="例:○○放課後等デイサービス" value="${esc(P?.office||'')}"><button class="btn btn--dark" data-office-save style="width:100%;margin-top:18px">事業所名を登録する</button></div><button class="btn" data-lo style="width:100%;margin-top:12px">ログアウト</button></main>`;
+}
+const pendingView=()=>msgView('承認待ちです',`${esc(P.office||P.name||'事業所')} さん、登録ありがとうございます。<br>管理者の承認が終わるとご利用いただけます。`,'<button class="btn btn--primary" data-re>承認されたか確認する</button>');
 
 /* ---- 学校一覧 ---- */
 const card=(s,i)=>{const k=kind(s),f=P.favs.includes(s.id),n=s.pointCount||0;
@@ -265,7 +260,7 @@ async function form(s,pid,t){
   const b=$('#sv');b.disabled=true;const body=$('#bd').value.trim();
   try{
    if(x){const data={cat,title:ti,body,img,updatedAt:new Date().toISOString()};if(isAdmin())await F.updateDoc(F.doc(db,'schools',s.id,'points',x.id),data);else await submitRequest('point-update',s.id,data,x.id)}
-   else{const data={cat,title:ti,body,img,uid:U.uid,userName:P.name,order:Date.now(),createdAt:new Date().toISOString()};if(isAdmin()){const wb=F.writeBatch(db);wb.set(F.doc(pcol(s)),data);wb.update(sref(s),{pointCount:F.increment(1)});await wb.commit();s.pointCount=(s.pointCount||0)+1}else await submitRequest('point-create',s.id,data)}
+   else{const data={cat,title:ti,body,img,uid:U.uid,userName:P.office,order:Date.now(),createdAt:new Date().toISOString()};if(isAdmin()){const wb=F.writeBatch(db);wb.set(F.doc(pcol(s)),data);wb.update(sref(s),{pointCount:F.increment(1)});await wb.commit();s.pointCount=(s.pointCount||0)+1}else await submitRequest('point-create',s.id,data)}
    toast('保存しました');go()}
   catch(e){toast(errMsg(e));b.disabled=false}};
  if(canDel)$('#dl').onclick=async()=>{if(!confirm('このポイントを削除しますか?'))return;
@@ -310,7 +305,8 @@ async function sortView(s,t){
 function route(){
  if(!ready)return loading();
  if(!U)return authView();
- if(!P)return msgView('アカウント情報がありません','登録が途中で止まった可能性があります。いったんログアウトして、もう一度「新規登録」からお試しください。');
+ if(!P)return officeSetupView();
+ if(!String(P.office||'').trim())return officeSetupView();
  if(P.status==='pending')return pendingView();
  if(P.status!=='active')return msgView('ご利用できません',P.status==='rejected'?'登録は承認されませんでした。心当たりがある場合は管理者へお問い合わせください。':'このアカウントは現在停止されています。管理者へお問い合わせください。');
  const t=++tok,m=(location.hash.slice(1)||'/').split('/');scrollTo(0,0);
@@ -330,6 +326,20 @@ app.addEventListener('click',async e=>{
  const m=e.target.closest('[data-m]');if(m){authView(m.dataset.m);return}
  if(e.target.closest('[data-lo]')){await A.signOut(auth);U=P=null;authView();return}
  if(e.target.closest('[data-re]')){await reloadSession();return}
+ if(e.target.closest('[data-office-save]')){
+  const btn=e.target.closest('[data-office-save]'),office=($('#office-setup')?.value||'').trim();
+  if(!office){toast('事業所名を入力してください');return}
+  if(office.length>100){toast('事業所名は100文字以内で入力してください');return}
+  btn.disabled=true;
+  try{
+   const ref=F.doc(db,'users',U.uid);
+   if(P){await F.updateDoc(ref,{office});}
+   else{await F.setDoc(ref,{name:U.displayName||office,office,email:U.email||'',status:'pending',role:'member',favs:[],createdAt:F.serverTimestamp()});}
+   toast('事業所名を登録しました。管理者の承認をお待ちください');
+   await reloadSession();
+  }catch(err){toast(errMsg(err));btn.disabled=false;}
+  return;
+ }
   /* 参考画像を一覧から削除（Cloudinaryの実ファイルは残す） */
   if(CUR){
    const rd=e.target.closest('[data-ref-delete]');
