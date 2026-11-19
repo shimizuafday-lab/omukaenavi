@@ -53,7 +53,7 @@ dialog::backdrop{background:rgba(20,52,44,.5)}
 </style></head>
 <body><div id="app"></div>
 <script type="module">
-import {auth,db,A,F,esc,toast,watchSession,errMsg} from './core.js';
+import {auth,db,A,F,esc,toast,watchSession,errMsg,uploadPdf} from './core.js';
 const $=s=>document.querySelector(s),app=$('#app');
 const TORD={'小学校':0,'中学校':1,'特別支援学校':2};
 const byId=(x,y)=>(TORD[x.type]??9)-(TORD[y.type]??9)||x.id.localeCompare(y.id);
@@ -127,89 +127,6 @@ async function userAct(a,id,btn){
  else await F.updateDoc(r,a==='stop'?{status:'disabled'}:{role:'member'});
  toast('更新しました');await show()}
 
-/* ===== 送迎ルールの一括反映 ===== */
-async function importRulesFile(file){
- const raw=JSON.parse(await file.text());
- if(raw.format!=='omukaenavi-rules-update-v1'||!Array.isArray(raw.records)||raw.count!==raw.records.length){
-  throw new Error('反映用JSONの形式が正しくありません。');
- }
- const records=raw.records;
- if(records.length!==180||raw.schoolCount!==69){
-  throw new Error('今回の反映データは69校・180件である必要があります。');
- }
- const seen=new Set(),bySchool=new Map();
- for(const r of records){
-  if(!r.schoolId||!r.pointId||!r.schoolName||!r.category||typeof r.body!=='string'||!r.title){
-   throw new Error('必須項目が不足しているデータがあります。');
-  }
-  const key=r.schoolId+'/'+r.pointId;
-  if(seen.has(key))throw new Error('同じ送迎ポイントが重複しています: '+key);
-  seen.add(key);
-  if(!bySchool.has(r.schoolId))bySchool.set(r.schoolId,[]);
-  bySchool.get(r.schoolId).push(r);
- }
- const schoolById=new Map(S.schools.map(s=>[s.id,s]));
- const updates=[];
- for(const [schoolId,list] of bySchool){
-  const school=schoolById.get(schoolId);
-  if(!school)throw new Error('登録されていない学校があります: '+schoolId);
-  if(list.some(r=>r.schoolName!==school.name||r.schoolType!==school.type)){
-   throw new Error('学校名・校種が一致しません: '+school.name);
-  }
-  const snap=await F.getDocs(F.collection(db,'schools',schoolId,'points'));
-  const pointById=new Map(snap.docs.map(d=>[d.id,d]));
-  for(const r of list){
-   const existing=pointById.get(r.pointId);
-   if(!existing)throw new Error(school.name+' の送迎ポイント「'+r.pointId+'」が見つかりません。データは変更していません。');
-   updates.push({ref:F.doc(db,'schools',schoolId,'points',r.pointId),record:r});
-  }
- }
- if(updates.length!==180)throw new Error('更新対象件数が180件になりません。データは変更していません。');
- const ok=confirm('69校・180件の送迎ルールを統合内容に更新します。\\n\\n・説明、分類、タイトル、並び順のみ更新\\n・写真、見取図、番号位置、投稿者情報など他の項目は保持\\n・既存データの削除や新規追加はしません\\n\\n実行しますか？');
- if(!ok)return;
- const batch=F.writeBatch(db);
- updates.forEach(({ref,record:r})=>batch.update(ref,{
-  cat:r.category,title:r.title,body:r.body,order:r.order,updatedAt:F.serverTimestamp()
- }));
- await batch.commit();
- toast('69校・180件の送迎ルールを更新しました');
-}
-app.addEventListener('change',async e=>{
- if(e.target.id!=='rules-file')return;
- const file=e.target.files?.[0];e.target.value='';if(!file)return;
- try{await importRulesFile(file)}catch(er){toast('反映できませんでした: '+errMsg(er))}
-});
-/* ===== 送迎ルールの書き出し ===== */
-async function exportRules(){
- const btn=app.querySelector('[data-a="export-rules"]');
- if(btn){btn.disabled=true;btn.textContent='書き出し中…'}
- try{
-  const schoolsList=S.schools.length?S.schools:((await F.getDocs(F.collection(db,'schools'))).docs.map(d=>({id:d.id,...d.data()})).sort(byId));
-  const records=[];
-  for(const s of schoolsList){
-   const snap=await F.getDocs(F.collection(db,'schools',s.id,'points'));
-   snap.docs.forEach(d=>{
-    const p=d.data();
-    const iso=v=>v?.toDate?.()?.toISOString?.()||null;
-    records.push({
-     schoolId:s.id,schoolName:s.name,schoolType:s.type,
-     pointId:d.id,category:p.cat||'',title:p.title||'',body:p.body||'',
-     order:p.order??null,createdAt:iso(p.createdAt),updatedAt:iso(p.updatedAt)
-    });
-   });
-  }
-  const payload={exportedAt:new Date().toISOString(),count:records.length,records};
-  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
-  const url=URL.createObjectURL(blob),a=document.createElement('a');
-  const d=new Date(),date=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
-  a.href=url;a.download='omukaenavi-送迎ルール-'+date+'.json';
-  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
-  toast(records.length+'件の送迎ポイントを書き出しました');
- }finally{
-  if(btn){btn.disabled=false;btn.textContent='送迎ルールを書き出す'}
- }
-}
-
 /* ===== 学校データ ===== */
 async function schools(keep){
  if(!keep||!S.schools.length)await loadSchools();
@@ -217,7 +134,7 @@ async function schools(keep){
  const noAddr=S.schools.filter(s=>!s.address).length;
  const l=S.schools.filter(s=>s.name.includes(sq.trim()));
  $('#main').innerHTML=`<div class="top"><div><h2>学校データ</h2><p class="lead">校名・公式HP・住所を管理します。住所は、アプリの「地図を見る」ボタンの飛び先になります。</p></div>
- <div class="acts"><button class="btn sbtn" data-a="export-rules">送迎ルールを書き出す</button><button class="btn sbtn" data-a="import-rules">統合ルールを反映</button><input id="rules-file" type="file" accept="application/json,.json" hidden><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
+ <div class="acts"><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
  <div class="two"><div><input id="sq" class="field pop" style="box-shadow:var(--pop)" placeholder="学校名で探す" aria-label="学校名で探す" value="${esc(sq)}">
 
  <div class="col" style="margin-top:12px">${l.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}</div></div>
@@ -232,15 +149,47 @@ function panel(){
  ${isNew?`<h3 class="fl">校種</h3><select id="pt" class="field">${['小学校','中学校','特別支援学校'].map(t=>`<option>${t}</option>`).join('')}</select>`:''}
  <h3 class="fl">公式HP</h3><input id="pw" class="field" type="url" placeholder="https://" value="${esc(s?.website)}">
  <h3 class="fl">住所(地図ボタンの飛び先になります)</h3><input id="pa" class="field" placeholder="例:静岡市葵区○○町1-2-3" value="${esc(s?.address)}">
+ <h3 class="fl">公式下校ルールPDF</h3><p class="bd">題名・年度・改訂日は自由に変更できます。PDFは複数ページのまま登録されます。</p>
+ <div class="col" style="margin-top:8px">${(s?.officialPdfs||[]).map(d=>`<div class="card" style="display:block;padding:12px">
+  <input class="field" data-pdf-title="${esc(d.id)}" value="${esc(d.title)}" aria-label="PDF題名">
+  <div class="row" style="margin-top:8px"><input class="field" style="flex:1;min-width:100px" data-pdf-year="${esc(d.id)}" value="${esc(d.year||'')}" placeholder="年度（例：令和8年度）"><input class="field" style="flex:1;min-width:120px" data-pdf-date="${esc(d.id)}" type="date" value="${esc(d.revisionDate||'')}"></div>
+  <div class="row" style="margin-top:8px"><label class="btn sbtn">PDFを差し替え<input type="file" accept="application/pdf,.pdf" hidden data-pdf-replace="${esc(d.id)}"></label><button class="btn sbtn" data-a="pdf-save" data-id="${esc(d.id)}">題名等を保存</button><button class="btn btn--danger sbtn" data-a="pdf-del" data-id="${esc(d.id)}">削除</button></div>
+ </div>`).join('')||'<p class="empty" style="padding:8px">公式PDFはまだ登録されていません。</p>'}</div>
+ <div class="card" style="display:block;padding:12px;margin-top:12px"><h3 class="fl" style="margin-top:0">新しいPDFを追加</h3>
+ <input id="pdf-title-new" class="field" placeholder="題名（自由に設定）">
+ <div class="row" style="margin-top:8px"><input id="pdf-year-new" class="field" style="flex:1;min-width:100px" placeholder="年度（例：令和8年度）"><input id="pdf-date-new" class="field" style="flex:1;min-width:120px" type="date" aria-label="改訂日"></div>
+ <input id="pdf-file-new" type="file" accept="application/pdf,.pdf" class="field" style="margin-top:8px">
+ <button class="btn btn--primary sbtn" style="margin-top:8px;width:100%" data-a="pdf-add">PDFを登録</button></div>
  <div class="row" style="margin-top:18px"><button class="btn sbtn" data-a="maptest">地図で確認</button><button class="btn btn--primary sbtn" data-a="save">保存する</button></div>
  ${isNew?'':'<button class="btn btn--danger sbtn" style="margin-top:18px" data-a="delschool">この学校を削除</button>'}`}
-async function schoolAct(a){
+async function schoolAct(a,id){
  if(a==='new'){selId='__new';return schools(true)}
  if(a==='maptest'){const q=$('#pa').value.trim()||$('#pn').value.trim();if(q)open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`,'_blank','noopener');return}
  if(a==='save'){const name=$('#pn').value.trim(),website=$('#pw').value.trim(),address=$('#pa').value.trim();if(!name){toast('正式名称を入力してください');return}
   if(selId==='__new'){const type=$('#pt').value,id=`${type}-x${Date.now().toString(36)}`;await F.setDoc(F.doc(db,'schools',id),{name,type,website,address,pointCount:0});selId=id}
   else await F.updateDoc(F.doc(db,'schools',selId),{name,website,address});
   toast('保存しました');return schools()}
+ if(a==='pdf-add'){
+  const title=$('#pdf-title-new').value.trim(),year=$('#pdf-year-new').value.trim(),revisionDate=$('#pdf-date-new').value,file=$('#pdf-file-new').files?.[0];
+  if(!title){toast('PDFの題名を入力してください');return}
+  if(!file){toast('PDFファイルを選択してください');return}
+  const btn=app.querySelector('[data-a="pdf-add"]');btn.disabled=true;btn.textContent='アップロード中…';
+  try{const url=await uploadPdf(file),id=F.doc(F.collection(db,'schools',selId,'_ids')).id;
+   const docs=[...(S.schools.find(x=>x.id===selId)?.officialPdfs||[]),{id,title,year,revisionDate,url,updatedAt:new Date().toISOString()}];
+   await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});await loadSchools();toast('公式PDFを登録しました');return schools(true)
+  }finally{if(btn.isConnected){btn.disabled=false;btn.textContent='PDFを登録'}}
+ }
+ if(a==='pdf-save'){
+  const s=S.schools.find(x=>x.id===selId),docs=[...(s.officialPdfs||[])];
+  const d=docs.find(x=>x.id===id);if(!d)return;
+  d.title=$('[data-pdf-title="'+id+'"]').value.trim();d.year=$('[data-pdf-year="'+id+'"]').value.trim();d.revisionDate=$('[data-pdf-date="'+id+'"]').value;
+  if(!d.title){toast('題名を入力してください');return}
+  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});await loadSchools();toast('PDF情報を保存しました');return schools(true)
+ }
+ if(a==='pdf-del'){
+  const s=S.schools.find(x=>x.id===selId);if(!confirm('このPDFの登録情報を削除しますか？\\n（Cloudinary上のファイル自体は残ります）'))return;
+  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:(s.officialPdfs||[]).filter(d=>d.id!==id)});await loadSchools();toast('PDFを一覧から削除しました');return schools(true)
+ }
  if(a==='delschool'){const s=S.schools.find(x=>x.id===selId);if(!confirm(`${s.name} を削除しますか?\n(登録済みの送迎ポイントは画面に出なくなります)`))return;
   await F.deleteDoc(F.doc(db,'schools',selId));selId=null;toast('削除しました');return schools()}
  if(a==='seed'){const have=new Set(S.schools.map(x=>x.id)),miss=(window.SCHOOLS||[]).filter(x=>!have.has(x.id));
@@ -248,6 +197,14 @@ async function schoolAct(a){
   for(let i=0;i<miss.length;i+=400){const b=F.writeBatch(db);miss.slice(i,i+400).forEach(x=>b.set(F.doc(db,'schools',x.id),{name:x.name,type:x.type,website:x.website||'',address:'',pointCount:0}));await b.commit()}
   toast(`${miss.length}校を登録しました`);return schools()}}
 
+app.addEventListener('change',async e=>{
+ const input=e.target.closest('[data-pdf-replace]');if(!input||!input.files?.[0])return;
+ const id=input.dataset.pdfReplace,file=input.files[0],s=S.schools.find(x=>x.id===selId);input.value='';
+ if(!s)return;
+ try{toast('PDFをアップロード中…');const url=await uploadPdf(file),docs=(s.officialPdfs||[]).map(d=>d.id===id?{...d,url,updatedAt:new Date().toISOString()}:d);
+  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});await loadSchools();toast('PDFを差し替えました');await schools(true)
+ }catch(er){toast('差し替えできませんでした: '+errMsg(er))}
+});
 /* ===== お知らせ ===== */
 async function notices(){
  S.notices=(await F.getDocs(F.query(F.collection(db,'notices'),F.orderBy('createdAt','desc')))).docs.map(d=>({id:d.id,...d.data()}));
@@ -266,9 +223,7 @@ app.addEventListener('click',async e=>{
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  try{
   if(['approve','reject','stop','admin','member','del'].includes(a))await userAct(a,b.dataset.id,b);
-  else if(a==='export-rules')await exportRules();
-  else if(a==='import-rules')$('#rules-file').click();
-  else if(['new','maptest','save','delschool','seed'].includes(a))await schoolAct(a);
+  else if(['new','maptest','save','delschool','seed','pdf-add','pdf-save','pdf-del'].includes(a))await schoolAct(a,b.dataset.id);
   else await noticeAct(a,b.dataset.id);
  }catch(er){toast(errMsg(er))}});
 </script>

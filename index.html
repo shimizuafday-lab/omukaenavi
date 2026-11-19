@@ -218,6 +218,13 @@ async function detail(s,t){
  <a class="btn back" href="#/" aria-label="学校一覧に戻る">&lt;</a>${p?'':'<div class="sm">校門の写真はまだありません</div>'}
  <label class="btn btn--primary">${p?'写真を撮り直す':'現地で撮影して登録'}<input type="file" accept="image/*" capture="environment" hidden data-photo="${esc(s.id)}"></label></div>
  <main style="padding:18px 16px"><h2 class="ttl">${esc(s.name)}</h2><div class="meta"><span class="tag tag--${k}">${kLabel[k]}</span></div>
+ <section style="margin-top:24px">
+ ${Array.isArray(s.officialPdfs)&&s.officialPdfs.length?`<h3 class="fl">公式下校ルール（PDF）</h3><div class="col" style="margin-top:10px">${s.officialPdfs.map((d,i)=>`<div class="card pop" style="display:block;padding:14px">
+  <div class="nm">${esc(d.title||'公式資料')}</div><div class="who">${[d.year,d.revisionDate?'改訂日 '+d.revisionDate:''].filter(Boolean).map(esc).join(' ・ ')}</div>
+  <a class="btn btn--primary" style="display:block;text-align:center;margin-top:10px" href="${esc(d.url)}" target="_blank" rel="noopener">PDFを開く（全ページ）</a>
+  <iframe title="${esc(d.title||'公式下校ルール')}" src="${esc(d.url)}" loading="lazy" style="width:100%;height:520px;border:1px solid var(--ink);border-radius:12px;margin-top:10px;background:#fff"></iframe>
+ </div>`).join('')}</div>`:''}
+ </section>
  <div class="row" style="margin-top:14px">${s.website?`<a class="btn grow" href="${esc(s.website)}" target="_blank" rel="noopener">学校HPを開く</a>`:''}<a class="btn grow" href="${esc(mapUrl(s))}" target="_blank" rel="noopener">地図を見る</a></div>
  <div class="row sb" style="margin-top:26px"><h3>送迎ポイント <span class="tag tag--mid" style="font-size:15px">${L.length}</span></h3>${isAdmin()&&L.length>1?`<a class="btn" href="#/s/${id}/sort">${SWAP.replace('width="22" height="22"','width="18" height="18"')}並び替え</a>`:''}</div>
  <div class="col" style="margin-top:12px">${L.length?L.map((x,i)=>ptCard(s,x,i)).join(''):'<p class="empty">まだ送迎ポイントがありません。<br>現地で気づいたことを、最初の1件として登録しましょう。</p>'}</div>

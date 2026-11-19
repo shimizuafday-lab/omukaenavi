@@ -57,6 +57,21 @@ export async function uploadImage(file, opt = {}) {
   return (await r.json()).secure_url;
 }
 
+// ---- 公式PDF: 元の複数ページPDFをrawファイルとして保存 ----
+export async function uploadPdf(file) {
+  if (!file || file.type !== 'application/pdf') throw new Error('PDFファイルを選択してください');
+  if (file.size > 25 * 1024 * 1024) throw new Error('PDFは25MB以下にしてください');
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('upload_preset', cloudinary.uploadPreset);
+  fd.append('folder', 'omukae/school-pdfs');
+  const r = await fetch(`https://api.cloudinary.com/v1_1/${cloudinary.cloudName}/raw/upload`, { method: 'POST', body: fd });
+  if (!r.ok) throw new Error('PDFのアップロードに失敗しました。CloudinaryのUnsigned presetでPDF/rawアップロードが許可されているか確認してください。');
+  const data = await r.json();
+  if (!data.secure_url) throw new Error('PDFの保存先URLを取得できませんでした');
+  return data.secure_url;
+}
+
 // ---- ログイン状態 ----
 // cb(user, profile, error): profile は users/{uid} の中身(承認状態・権限)
 export const hold = { on: false };   // 新規登録の最中は一時停止
