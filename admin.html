@@ -180,8 +180,8 @@ async function schoolAct(a,id){
   }finally{if(btn.isConnected){btn.disabled=false;btn.textContent='PDFを登録'}}
  }
  if(a==='pdf-save'){
-  const s=S.schools.find(x=>x.id===selId),docs=(s.officialPdfs||[]).map(d=>d.id===id?d:d);
-  const id=id,d=docs.find(x=>x.id===id);if(!d)return;
+  const s=S.schools.find(x=>x.id===selId),docs=[...(s.officialPdfs||[])];
+  const d=docs.find(x=>x.id===id);if(!d)return;
   d.title=$('[data-pdf-title="'+id+'"]').value.trim();d.year=$('[data-pdf-year="'+id+'"]').value.trim();d.revisionDate=$('[data-pdf-date="'+id+'"]').value;
   if(!d.title){toast('題名を入力してください');return}
   await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});toast('PDF情報を保存しました');return schools(true)
