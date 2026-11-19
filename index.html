@@ -222,7 +222,7 @@ async function detail(s,t){
  ${Array.isArray(s.officialPdfs)&&s.officialPdfs.length?`<h3 class="fl">公式下校ルール（PDF）</h3><div class="col" style="margin-top:10px">${s.officialPdfs.map((d,i)=>`<div class="card pop" style="display:block;padding:14px">
   <div class="nm">${esc(d.title||'公式資料')}</div><div class="who">${[d.year,d.revisionDate?'改訂日 '+d.revisionDate:''].filter(Boolean).map(esc).join(' ・ ')}</div>
   <a class="btn btn--primary" style="display:block;text-align:center;margin-top:10px" href="${esc(d.url)}" target="_blank" rel="noopener">PDFを開く（全ページ）</a>
-  <iframe title="${esc(d.title||'公式下校ルール')}" src="${esc(d.url)}" loading="lazy" style="width:100%;height:520px;border:1px solid var(--ink);border-radius:12px;margin-top:10px;background:#fff"></iframe>
+  <iframe title="${esc(d.title||'公式下校ルール')}" src="${esc(d.url)}#view=Fit" loading="lazy" style="width:100%;height:520px;border:1px solid var(--ink);border-radius:12px;margin-top:10px;background:#fff"></iframe>
  </div>`).join('')}</div>`:''}
  </section>
  <div class="row" style="margin-top:14px">${s.website?`<a class="btn grow" href="${esc(s.website)}" target="_blank" rel="noopener">学校HPを開く</a>`:''}<a class="btn grow" href="${esc(mapUrl(s))}" target="_blank" rel="noopener">地図を見る</a></div>
