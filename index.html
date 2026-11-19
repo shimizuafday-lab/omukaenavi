@@ -94,9 +94,14 @@ const uref=()=>F.doc(db,'users',U.uid);
 const sref=s=>F.doc(db,'schools',s.id);
 const pcol=s=>F.collection(db,'schools',s.id,'points');
 const getPts=async s=>(await F.getDocs(F.query(pcol(s),F.orderBy('order')))).docs.map(d=>({id:d.id,...d.data()}));
+// 一般ユーザーの変更は公開データに触れず、審査申請として別保存する
+async function submitRequest(action,schoolId,data={},pointId=null){
+ await F.addDoc(F.collection(db,'requests'),{action,schoolId,pointId,data,uid:U.uid,userName:P.name||U.email||'利用者',status:'pending',createdAt:F.serverTimestamp()});
+ toast('申請を送信しました。管理者の承認後に反映されます');
+}
+const saveStamps=()=>isAdmin()?F.updateDoc(sref(CUR.s),{stamps:CUR.s.stamps||[]}).catch(er=>toast(errMsg(er))):submitRequest('stamps',CUR.s.id,{stamps:CUR.s.stamps||[]});
 /* 写真: 編集画面(スタンプ・モザイク)を挟んでからCloudinaryへ。キャンセルならnull */
 async function prep(file){const r=await editPhoto(file);if(!r)return null;toast('写真をアップロード中…');return uploadImage(r.blob,{raw:r.raw})}
-const saveStamps=()=>F.updateDoc(sref(CUR.s),{stamps:CUR.s.stamps||[]}).catch(er=>toast(errMsg(er)));
 async function init(){
  SCH=(await F.getDocs(F.collection(db,'schools'))).docs.map(d=>({id:d.id,...d.data()})).sort((x,y)=>(TORD[x.type]??9)-(TORD[y.type]??9)||x.id.localeCompare(y.id));
  P.favs=Array.isArray(P.favs)?P.favs:[];
@@ -113,7 +118,7 @@ const msgView=(title,body,btns='')=>{app.innerHTML=`<header class="hd"><div clas
 function authView(mode='login'){const reg=mode==='reg';
  app.innerHTML=`<header class="hd"><div class="sm">静岡市 送迎ポイント共有</div><h1>お迎えルールナビ</h1></header>
  <main style="padding:16px"><div class="seg pop" style="border-radius:28px" role="group">${[['login','ログイン'],['reg','新規登録']].map(([k,l])=>`<button data-m="${k}" aria-pressed="${k===mode}">${l}</button>`).join('')}</div>
- ${reg?'<p class="note" style="margin-top:14px">登録後すぐにご利用いただけます。</p>':''}
+ ${reg?'<p class="note" style="margin-top:14px">登録後、管理者の利用承認が完了すると閲覧できます。</p>':''}
  ${reg?`<h3 class="fl">お名前</h3><input id="nm" class="field" autocomplete="name" placeholder="例:山田 花子">
  <h3 class="fl">事業所名・所属</h3><input id="of" class="field" placeholder="例:○○放課後デイ">`:''}
  <h3 class="fl">メールアドレス</h3><input id="em" class="field" type="email" autocomplete="email" inputmode="email">
@@ -130,7 +135,7 @@ function authView(mode='login'){const reg=mode==='reg';
    if(reg){const nm=val('#nm'),of=val('#of');if(!nm){toast('お名前を入力してください');b.disabled=false;return}
     hold.on=true;
     try{const c=await A.createUserWithEmailAndPassword(auth,em,pw);
-     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm,office:of,email:em,status:'active',role:'member',favs:[],createdAt:F.serverTimestamp()})}
+     await F.setDoc(F.doc(db,'users',c.user.uid),{name:nm,office:of,email:em,status:'pending',role:'member',favs:[],createdAt:F.serverTimestamp()})}
     finally{hold.on=false;if(auth.currentUser)await reloadSession()}
    }else await A.signInWithEmailAndPassword(auth,em,pw);
   }catch(e){toast(errMsg(e));b.disabled=false}};
@@ -147,7 +152,7 @@ function authView(mode='login'){const reg=mode==='reg';
    if(!profile.exists()){
     await F.setDoc(userRef,{
      name:result.user.displayName||result.user.email?.split('@')[0]||'Googleユーザー',
-     office:'',email:result.user.email||'',status:'active',role:'member',favs:[],
+     office:'',email:result.user.email||'',status:'pending',role:'member',favs:[],
      createdAt:F.serverTimestamp()
     });
    }
@@ -195,7 +200,7 @@ function settings(){
  <p class="note" style="margin-top:20px">写真を登録するときは編集画面が開きます。児童の顔・名札・車のナンバーは「モザイク」か「黒塗り」で隠してください。</p></main>${nav('settings')}`}
 
 /* ---- 学校詳細 ---- */
-const ptCard=(s,x,i)=>`<a class="card pop" style="--i:${Math.min(i,8)}" href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</a>`;
+const ptCard=(s,x,i)=>`<${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}>`;
 function drawPlan(){
  const {s,L,sel,selS,tool}=CUR,box=$('#plan');if(!box)return;
  const SL=(s.stamps||[]).filter(st=>STAMPS[st.t]);
@@ -230,7 +235,7 @@ async function detail(s,t){
  <div class="col" style="margin-top:12px">${L.length?L.map((x,i)=>ptCard(s,x,i)).join(''):'<p class="empty">まだ送迎ポイントがありません。<br>現地で気づいたことを、最初の1件として登録しましょう。</p>'}</div>
  ${Array.isArray(s.referenceImages)&&s.referenceImages.length?`<h3 class="fl" style="margin-top:28px">学校の参考画像</h3><div class="col" style="margin-top:10px">${s.referenceImages.map((im,i)=>{const u=referenceUrl(im);return `<div class="card pop"><a href="${esc(u)}" target="_blank" rel="noopener" style="display:block"><img src="${esc(u)}" alt="${esc(im.label||'学校の参考画像')} ${i+1}" loading="lazy" style="display:block;width:100%;max-height:380px;object-fit:contain;background:#fff;border:2px solid var(--ink);border-radius:var(--radius)"><div class="who">${esc(im.label||'学校の参考画像')} ${i+1}（タップで拡大）</div></a>${isAdmin()?`<button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-delete="${i}">参考画像を削除</button>`:''}</div>`}).join('')}</div>`:''}
  <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
- <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図をタップして番号を置く</p>
+ <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図の変更は管理者の承認後に反映されます</p>
  <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label>
  ${Array.isArray(s.referenceImages)&&s.referenceImages.some(referenceUrl)?`<section style="margin-top:24px"><h3 class="fl">参考画像から見取図に設定</h3><p class="who">取り込み済みの参考画像を選ぶと、再アップロードせず見取図に設定できます。</p><div class="col">${s.referenceImages.map((r,i)=>{const u=referenceUrl(r);return u?`<div class="card pop"><img class="pimg" style="margin:0;max-height:180px" src="${esc(u)}" alt="参考画像 ${i+1}" loading="lazy"><button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-plan="${i}">この画像を見取図に設定</button></div>`:''}).join('')}</div></section>`:''}</main>
  <a class="btn btn--primary fab" href="#/s/${id}/new">＋ ポイント追加</a>${nav('schools')}`;
@@ -259,18 +264,13 @@ async function form(s,pid,t){
  $('#sv').onclick=async()=>{const ti=$('#ti').value.trim();if(!ti){toast('タイトルを入力してください');return}
   const b=$('#sv');b.disabled=true;const body=$('#bd').value.trim();
   try{
-   if(x)await F.updateDoc(F.doc(db,'schools',s.id,'points',x.id),{cat,title:ti,body,img,updatedAt:F.serverTimestamp()});
-   else{const wb=F.writeBatch(db);
-    wb.set(F.doc(pcol(s)),{cat,title:ti,body,img,uid:U.uid,userName:P.name,order:Date.now(),createdAt:F.serverTimestamp()});
-    wb.update(sref(s),{pointCount:F.increment(1)});await wb.commit();s.pointCount=(s.pointCount||0)+1}
+   if(x){const data={cat,title:ti,body,img,updatedAt:new Date().toISOString()};if(isAdmin())await F.updateDoc(F.doc(db,'schools',s.id,'points',x.id),data);else await submitRequest('point-update',s.id,data,x.id)}
+   else{const data={cat,title:ti,body,img,uid:U.uid,userName:P.name,order:Date.now(),createdAt:new Date().toISOString()};if(isAdmin()){const wb=F.writeBatch(db);wb.set(F.doc(pcol(s)),data);wb.update(sref(s),{pointCount:F.increment(1)});await wb.commit();s.pointCount=(s.pointCount||0)+1}else await submitRequest('point-create',s.id,data)}
    toast('保存しました');go()}
   catch(e){toast(errMsg(e));b.disabled=false}};
  if(canDel)$('#dl').onclick=async()=>{if(!confirm('このポイントを削除しますか?'))return;
   const r=F.doc(db,'schools',s.id,'points',x.id);
-  try{
-   try{const wb=F.writeBatch(db);wb.delete(r);wb.update(sref(s),{pointCount:F.increment(-1)});await wb.commit();s.pointCount=Math.max(0,(s.pointCount||0)-1)}
-   catch(e1){await F.deleteDoc(r)}
-   go()}catch(e){toast(errMsg(e))}}}
+  try{if(isAdmin()){const wb=F.writeBatch(db);wb.delete(r);wb.update(sref(s),{pointCount:F.increment(-1)});await wb.commit();s.pointCount=Math.max(0,(s.pointCount||0)-1)}else await submitRequest('point-delete',s.id,{},x.id);go()}catch(e){toast(errMsg(e))}}}
 
 /* ---- 並び替え(管理者のみ) ---- */
 async function sortView(s,t){
@@ -359,8 +359,7 @@ app.addEventListener('click',async e=>{
    if(!url){toast('参考画像のURLを読み取れませんでした');return}
    const target=CUR.s;rp.disabled=true;
    try{
-    await F.updateDoc(sref(target),{plan:url});
-    target.plan=url;toast('見取図に設定しました');detail(target,++tok);
+    if(isAdmin()){await F.updateDoc(sref(target),{plan:url});target.plan=url;toast('見取図に設定しました')}else await submitRequest('school-fields',target.id,{plan:url});detail(target,++tok);
    }catch(er){toast(errMsg(er));rp.disabled=false}
    return;
   }
@@ -369,7 +368,7 @@ app.addEventListener('click',async e=>{
  if(CUR){
   const un=e.target.closest('[data-unplace]');
   if(un&&CUR.sel){const x=CUR.L.find(v=>v.id===CUR.sel);delete x.x;delete x.y;CUR.sel=null;drawPlan();
-   F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',x.id),{x:F.deleteField(),y:F.deleteField()}).catch(er=>toast(errMsg(er)));return}
+   if(isAdmin())F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',x.id),{x:F.deleteField(),y:F.deleteField()}).catch(er=>toast(errMsg(er)));else submitRequest('point-position',CUR.s.id,{remove:true},x.id);return}
   const tl=e.target.closest('[data-ptool]');
   if(tl){CUR.tool=tl.dataset.ptool;CUR.sel=CUR.selS=null;drawPlan();return}
   const ro=e.target.closest('[data-rot]');
@@ -384,7 +383,7 @@ app.addEventListener('click',async e=>{
    const r=pl.getBoundingClientRect(),x=+((e.clientX-r.left)/r.width*100).toFixed(1),y=+((e.clientY-r.top)/r.height*100).toFixed(1);
    if(CUR.selS){const st=(CUR.s.stamps||[]).find(v=>v.id===CUR.selS);if(st){st.x=x;st.y=y}CUR.selS=null;drawPlan();saveStamps();return}
    if(CUR.sel){const tg=CUR.L.find(v=>v.id===CUR.sel);tg.x=x;tg.y=y;CUR.sel=null;drawPlan();
-    F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',tg.id),{x,y}).catch(er=>toast(errMsg(er)));return}
+    if(isAdmin())F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',tg.id),{x,y}).catch(er=>toast(errMsg(er)));else submitRequest('point-position',CUR.s.id,{x,y},tg.id);return}
    if(CUR.tool!=='num'){
     const arr=CUR.s.stamps||(CUR.s.stamps=[]);
     if(arr.length>=60){toast('スタンプは1校につき60個までです');return}
@@ -393,7 +392,7 @@ app.addEventListener('click',async e=>{
    const tg=CUR.L.find(v=>v.x==null);
    if(!tg){toast(CUR.L.length?'番号はすべて置きました。スタンプを使うときは、上のボタンで種類を選んでください':'先に送迎ポイントを登録してください');return}
    tg.x=x;tg.y=y;drawPlan();
-   F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',tg.id),{x,y}).catch(er=>toast(errMsg(er)));return}}
+   if(isAdmin())F.updateDoc(F.doc(db,'schools',CUR.s.id,'points',tg.id),{x,y}).catch(er=>toast(errMsg(er)));else submitRequest('point-position',CUR.s.id,{x,y},tg.id);return}}
  const f=e.target.closest('[data-fav]');if(f){const id=f.dataset.fav,on=!P.favs.includes(id);
   P.favs=on?[...P.favs,id]:P.favs.filter(v=>v!==id);f.classList.toggle('on',on);
   F.updateDoc(uref(),{favs:on?F.arrayUnion(id):F.arrayRemove(id)}).catch(er=>toast(errMsg(er)));return}
@@ -405,6 +404,6 @@ app.addEventListener('change',async e=>{
  const i=e.target.closest('[data-photo],[data-plan]');if(!i||!i.files[0])return;
  const isPlan=i.hasAttribute('data-plan'),s=SCH.find(v=>v.id===(i.dataset.photo||i.dataset.plan)),f=i.files[0];i.value='';
  try{const u=await prep(f);if(!u)return;const key=isPlan?'plan':'photo';
-  await F.updateDoc(sref(s),{[key]:u});s[key]=u;toast('登録しました');detail(s,++tok)}
+  if(isAdmin()){await F.updateDoc(sref(s),{[key]:u});s[key]=u;toast('登録しました')}else await submitRequest('school-fields',s.id,{[key]:u});detail(s,++tok)}
  catch(er){toast(errMsg(er))}});
 </script></body></html>
