@@ -137,10 +137,10 @@ async function schools(keep){
  <div class="acts"><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
  <div class="two"><div><input id="sq" class="field pop" style="box-shadow:var(--pop)" placeholder="学校名で探す" aria-label="学校名で探す" value="${esc(sq)}">
 
- <div class="col" style="margin-top:12px">${l.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}</div></div>
+ <div class="col" id="school-list" style="margin-top:12px">${l.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}</div></div>
  <div class="panel pop" id="panel"></div></div>`;
  panel();
- const i=$('#sq');i.oninput=()=>{sq=i.value;const p=i.selectionStart;schools(true).then(()=>{const n=$('#sq');n.focus();n.setSelectionRange(p,p)})}}
+ const i=$('#sq');i.oninput=()=>{sq=i.value;const q=sq.trim(),list=$('#school-list');if(!list)return;const filtered=S.schools.filter(s=>s.name.includes(q));list.innerHTML=filtered.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}}
 function panel(){
  const isNew=selId==='__new',s=S.schools.find(x=>x.id===selId),el=$('#panel');
  if(!s&&!isNew){el.innerHTML='<p class="empty" style="padding:10px 0">左の一覧から学校を選ぶと、ここで編集できます。</p>';return}
