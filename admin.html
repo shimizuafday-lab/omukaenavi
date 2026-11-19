@@ -127,58 +127,6 @@ async function userAct(a,id,btn){
  else await F.updateDoc(r,a==='stop'?{status:'disabled'}:{role:'member'});
  toast('更新しました');await show()}
 
-/* ===== 送迎ルールの一括反映 ===== */
-async function importRulesFile(file){
- const raw=JSON.parse(await file.text());
- if(raw.format!=='omukaenavi-rules-update-v1'||!Array.isArray(raw.records)||raw.count!==raw.records.length){
-  throw new Error('反映用JSONの形式が正しくありません。');
- }
- const records=raw.records;
- if(records.length!==180||raw.schoolCount!==69){
-  throw new Error('今回の反映データは69校・180件である必要があります。');
- }
- const seen=new Set(),bySchool=new Map();
- for(const r of records){
-  if(!r.schoolId||!r.pointId||!r.schoolName||!r.category||typeof r.body!=='string'||!r.title){
-   throw new Error('必須項目が不足しているデータがあります。');
-  }
-  const key=r.schoolId+'/'+r.pointId;
-  if(seen.has(key))throw new Error('同じ送迎ポイントが重複しています: '+key);
-  seen.add(key);
-  if(!bySchool.has(r.schoolId))bySchool.set(r.schoolId,[]);
-  bySchool.get(r.schoolId).push(r);
- }
- const schoolById=new Map(S.schools.map(s=>[s.id,s]));
- const updates=[];
- for(const [schoolId,list] of bySchool){
-  const school=schoolById.get(schoolId);
-  if(!school)throw new Error('登録されていない学校があります: '+schoolId);
-  if(list.some(r=>r.schoolName!==school.name||r.schoolType!==school.type)){
-   throw new Error('学校名・校種が一致しません: '+school.name);
-  }
-  const snap=await F.getDocs(F.collection(db,'schools',schoolId,'points'));
-  const pointById=new Map(snap.docs.map(d=>[d.id,d]));
-  for(const r of list){
-   const existing=pointById.get(r.pointId);
-   if(!existing)throw new Error(school.name+' の送迎ポイント「'+r.pointId+'」が見つかりません。データは変更していません。');
-   updates.push({ref:F.doc(db,'schools',schoolId,'points',r.pointId),record:r});
-  }
- }
- if(updates.length!==180)throw new Error('更新対象件数が180件になりません。データは変更していません。');
- const ok=confirm('69校・180件の送迎ルールを統合内容に更新します。\\n\\n・説明、分類、タイトル、並び順のみ更新\\n・写真、見取図、番号位置、投稿者情報など他の項目は保持\\n・既存データの削除や新規追加はしません\\n\\n実行しますか？');
- if(!ok)return;
- const batch=F.writeBatch(db);
- updates.forEach(({ref,record:r})=>batch.update(ref,{
-  cat:r.category,title:r.title,body:r.body,order:r.order,updatedAt:F.serverTimestamp()
- }));
- await batch.commit();
- toast('69校・180件の送迎ルールを更新しました');
-}
-app.addEventListener('change',async e=>{
- if(e.target.id!=='rules-file')return;
- const file=e.target.files?.[0];e.target.value='';if(!file)return;
- try{await importRulesFile(file)}catch(er){toast('反映できませんでした: '+errMsg(er))}
-});
 /* ===== 送迎ルールの書き出し ===== */
 async function exportRules(){
  const btn=app.querySelector('[data-a="export-rules"]');
@@ -217,7 +165,7 @@ async function schools(keep){
  const noAddr=S.schools.filter(s=>!s.address).length;
  const l=S.schools.filter(s=>s.name.includes(sq.trim()));
  $('#main').innerHTML=`<div class="top"><div><h2>学校データ</h2><p class="lead">校名・公式HP・住所を管理します。住所は、アプリの「地図を見る」ボタンの飛び先になります。</p></div>
- <div class="acts"><button class="btn sbtn" data-a="export-rules">送迎ルールを書き出す</button><button class="btn sbtn" data-a="import-rules">統合ルールを反映</button><input id="rules-file" type="file" accept="application/json,.json" hidden><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
+ <div class="acts"><button class="btn sbtn" data-a="export-rules">送迎ルールを書き出す</button><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
  <div class="two"><div><input id="sq" class="field pop" style="box-shadow:var(--pop)" placeholder="学校名で探す" aria-label="学校名で探す" value="${esc(sq)}">
 
  <div class="col" style="margin-top:12px">${l.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}</div></div>
@@ -267,7 +215,6 @@ app.addEventListener('click',async e=>{
  try{
   if(['approve','reject','stop','admin','member','del'].includes(a))await userAct(a,b.dataset.id,b);
   else if(a==='export-rules')await exportRules();
-  else if(a==='import-rules')$('#rules-file').click();
   else if(['new','maptest','save','delschool','seed'].includes(a))await schoolAct(a);
   else await noticeAct(a,b.dataset.id);
  }catch(er){toast(errMsg(er))}});
