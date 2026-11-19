@@ -127,6 +127,37 @@ async function userAct(a,id,btn){
  else await F.updateDoc(r,a==='stop'?{status:'disabled'}:{role:'member'});
  toast('更新しました');await show()}
 
+/* ===== 送迎ルールの書き出し ===== */
+async function exportRules(){
+ const btn=app.querySelector('[data-a="export-rules"]');
+ if(btn){btn.disabled=true;btn.textContent='書き出し中…'}
+ try{
+  const schoolsList=S.schools.length?S.schools:((await F.getDocs(F.collection(db,'schools'))).docs.map(d=>({id:d.id,...d.data()})).sort(byId));
+  const records=[];
+  for(const s of schoolsList){
+   const snap=await F.getDocs(F.collection(db,'schools',s.id,'points'));
+   snap.docs.forEach(d=>{
+    const p=d.data();
+    const iso=v=>v?.toDate?.()?.toISOString?.()||null;
+    records.push({
+     schoolId:s.id,schoolName:s.name,schoolType:s.type,
+     pointId:d.id,category:p.cat||'',title:p.title||'',body:p.body||'',
+     order:p.order??null,createdAt:iso(p.createdAt),updatedAt:iso(p.updatedAt)
+    });
+   });
+  }
+  const payload={exportedAt:new Date().toISOString(),count:records.length,records};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  const d=new Date(),date=[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+  a.href=url;a.download='omukaenavi-送迎ルール-'+date+'.json';
+  document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url);
+  toast(records.length+'件の送迎ポイントを書き出しました');
+ }finally{
+  if(btn){btn.disabled=false;btn.textContent='送迎ルールを書き出す'}
+ }
+}
+
 /* ===== 学校データ ===== */
 async function schools(keep){
  if(!keep||!S.schools.length)await loadSchools();
@@ -134,7 +165,7 @@ async function schools(keep){
  const noAddr=S.schools.filter(s=>!s.address).length;
  const l=S.schools.filter(s=>s.name.includes(sq.trim()));
  $('#main').innerHTML=`<div class="top"><div><h2>学校データ</h2><p class="lead">校名・公式HP・住所を管理します。住所は、アプリの「地図を見る」ボタンの飛び先になります。</p></div>
- <div class="acts"><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
+ <div class="acts"><button class="btn sbtn" data-a="export-rules">送迎ルールを書き出す</button><button class="btn sbtn" data-a="new">学校を追加</button>${miss.length?`<button class="btn sbtn" data-a="seed">${S.schools.length?`未登録の${miss.length}校を追加登録`:`${miss.length}校を初期登録(最初の1回だけ)`}</button>`:''}</div></div>
  <div class="two"><div><input id="sq" class="field pop" style="box-shadow:var(--pop)" placeholder="学校名で探す" aria-label="学校名で探す" value="${esc(sq)}">
 
  <div class="col" style="margin-top:12px">${l.map(s=>`<div class="card pop sch ${s.id===selId?'sel':''}" data-pick="${esc(s.id)}"><div class="nm grow">${esc(short(s.name))}</div><span class="tag tag--${kind(s)}">${kLabel[kind(s)]}</span>${s.address?'':'<span class="tag tag--no">住所なし</span>'}</div>`).join('')||`<p class="empty">${S.schools.length?'見つかりませんでした':'「初期登録」を押すと、schools.js の学校データを登録します。'}</p>`}</div></div>
@@ -183,6 +214,7 @@ app.addEventListener('click',async e=>{
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  try{
   if(['approve','reject','stop','admin','member','del'].includes(a))await userAct(a,b.dataset.id,b);
+  else if(a==='export-rules')await exportRules();
   else if(['new','maptest','save','delschool','seed'].includes(a))await schoolAct(a);
   else await noticeAct(a,b.dataset.id);
  }catch(er){toast(errMsg(er))}});
