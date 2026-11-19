@@ -176,7 +176,7 @@ async function schoolAct(a,id){
   const btn=app.querySelector('[data-a="pdf-add"]');btn.disabled=true;btn.textContent='アップロード中…';
   try{const url=await uploadPdf(file),id=F.doc(F.collection(db,'schools',selId,'_ids')).id;
    const docs=[...(S.schools.find(x=>x.id===selId)?.officialPdfs||[]),{id,title,year,revisionDate,url,updatedAt:new Date().toISOString()}];
-   await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});toast('公式PDFを登録しました');return schools(true)
+   await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});await loadSchools();toast('公式PDFを登録しました');return schools(true)
   }finally{if(btn.isConnected){btn.disabled=false;btn.textContent='PDFを登録'}}
  }
  if(a==='pdf-save'){
@@ -184,11 +184,11 @@ async function schoolAct(a,id){
   const d=docs.find(x=>x.id===id);if(!d)return;
   d.title=$('[data-pdf-title="'+id+'"]').value.trim();d.year=$('[data-pdf-year="'+id+'"]').value.trim();d.revisionDate=$('[data-pdf-date="'+id+'"]').value;
   if(!d.title){toast('題名を入力してください');return}
-  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});toast('PDF情報を保存しました');return schools(true)
+  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});await loadSchools();toast('PDF情報を保存しました');return schools(true)
  }
  if(a==='pdf-del'){
   const s=S.schools.find(x=>x.id===selId);if(!confirm('このPDFの登録情報を削除しますか？\\n（Cloudinary上のファイル自体は残ります）'))return;
-  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:(s.officialPdfs||[]).filter(d=>d.id!==id)});toast('PDFを一覧から削除しました');return schools(true)
+  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:(s.officialPdfs||[]).filter(d=>d.id!==id)});await loadSchools();toast('PDFを一覧から削除しました');return schools(true)
  }
  if(a==='delschool'){const s=S.schools.find(x=>x.id===selId);if(!confirm(`${s.name} を削除しますか?\n(登録済みの送迎ポイントは画面に出なくなります)`))return;
   await F.deleteDoc(F.doc(db,'schools',selId));selId=null;toast('削除しました');return schools()}
@@ -202,7 +202,7 @@ app.addEventListener('change',async e=>{
  const id=input.dataset.pdfReplace,file=input.files[0],s=S.schools.find(x=>x.id===selId);input.value='';
  if(!s)return;
  try{toast('PDFをアップロード中…');const url=await uploadPdf(file),docs=(s.officialPdfs||[]).map(d=>d.id===id?{...d,url,updatedAt:new Date().toISOString()}:d);
-  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});toast('PDFを差し替えました');await schools(true)
+  await F.updateDoc(F.doc(db,'schools',selId),{officialPdfs:docs});await loadSchools();toast('PDFを差し替えました');await schools(true)
  }catch(er){toast('差し替えできませんでした: '+errMsg(er))}
 });
 /* ===== お知らせ ===== */
