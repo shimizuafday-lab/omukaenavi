@@ -36,6 +36,16 @@ a.card,.card a{color:inherit;text-decoration:none}
 .note{font-size:12px;font-weight:800;background:var(--soft);border:2px solid var(--ink);border-radius:14px;padding:10px 12px;line-height:1.6}
 textarea.field{height:104px;resize:none}
 .fab{right:max(16px,calc(50% - 244px));z-index:4}
+.detail-actions{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));translate:-50% 0;width:min(488px,calc(100% - 28px));display:flex;gap:8px;z-index:6}
+.detail-actions .btn{flex:1;min-height:44px;padding:0 12px;font-size:13px;box-shadow:var(--pop)}
+.edit-sheet{position:fixed;inset:0;z-index:20;background:#17211dcc;display:flex;align-items:flex-end;justify-content:center;padding:16px}
+.edit-sheet[hidden]{display:none}
+.edit-sheet-card{width:min(520px,100%);max-height:min(82vh,720px);overflow:auto;background:var(--surface);color:var(--ink);border:2px solid var(--ink);border-radius:24px;padding:18px;box-shadow:var(--pop)}
+.edit-option{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;margin-top:8px;padding:10px 14px;text-align:left;background:var(--bg);border:1.5px solid var(--ink);border-radius:14px;font-weight:800}
+.edit-option small{display:block;font-weight:500;opacity:.72;margin-top:2px}
+.plan:not(.is-editing){cursor:default}
+.plan:not(.is-editing) .mk,.plan:not(.is-editing) .st{pointer-events:none}
+#ptools[hidden],#pinfo[hidden],#reference-plan-tools[hidden]{display:none}
 .navbar{left:50%;right:auto;width:min(488px,calc(100% - 32px));translate:-50% 0;z-index:5}
 .box{padding:18px;background:var(--surface);margin-top:16px;line-height:1.8;font-size:14px}
 .sk{height:84px;margin-top:12px}
@@ -195,9 +205,13 @@ function settings(){
  <p class="note" style="margin-top:20px">写真を登録するときは編集画面が開きます。児童の顔・名札・車のナンバーは「モザイク」か「黒塗り」で隠してください。</p></main>${nav('settings')}`}
 
 /* ---- 学校詳細 ---- */
-const ptCard=(s,x,i)=>`<div class="col" style="margin-top:0"><${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}><button type="button" class="btn sbtn" data-point-report="${esc(x.id)}" style="width:auto;align-self:flex-start;min-height:30px;padding:0 10px;font-size:12px;margin-top:4px">📝 修正報告</button></div>`;
+const ptCard=(s,x,i)=>`<div class="col" style="margin-top:0"><${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}></div>`;
 function drawPlan(){
  const {s,L,sel,selS,tool}=CUR,box=$('#plan');if(!box)return;
+ const editing=!!CUR.planEditing;
+ $('#ptools').hidden=!editing;$('#pinfo').hidden=!editing;
+ const refTools=$('#reference-plan-tools');if(refTools)refTools.hidden=!editing;
+ box.classList.toggle('is-editing',editing);
  const SL=(s.stamps||[]).filter(st=>STAMPS[st.t]);
  $('#ptools').innerHTML=[['num','番号',''],...Object.entries(STAMPS).map(([k,v])=>[k,v.l,stampSvg(k,16,2.6)])].map(([k,l,i])=>`<button class="btn ptl" data-ptool="${k}" aria-pressed="${k===tool}">${i}${l}</button>`).join('');
  box.innerHTML=(s.plan?`<img src="${esc(s.plan)}" alt="見取図">`:'')
@@ -216,7 +230,7 @@ async function detail(s,t){
  const k=kind(s),id=encodeURIComponent(s.id),p=s.photo;
  app.innerHTML=`<div class="hero" style="${p?`background:url('${esc(p)}') center/cover`:''}">
  <a class="btn back" href="#/" aria-label="学校一覧に戻る">&lt;</a>${p?'':'<div class="sm">校門の写真はまだありません</div>'}
- <label class="btn btn--primary">${p?'写真を撮り直す':'現地で撮影して登録'}<input type="file" accept="image/*" capture="environment" hidden data-photo="${esc(s.id)}"></label></div>
+ <input type="file" accept="image/*" capture="environment" hidden data-photo="${esc(s.id)}"></div>
  <main style="padding:18px 16px"><h2 class="ttl">${esc(s.name)}</h2><div class="meta"><span class="tag tag--${k}">${kLabel[k]}</span></div>
  <section style="margin-top:24px">
  ${Array.isArray(s.officialPdfs)&&s.officialPdfs.length?`<h3 class="fl">公式下校ルール（PDF）</h3><div class="col" style="margin-top:10px">${s.officialPdfs.map((d,i)=>`<div class="card pop" style="display:block;padding:14px">
@@ -231,9 +245,16 @@ async function detail(s,t){
  ${Array.isArray(s.referenceImages)&&s.referenceImages.length?`<h3 class="fl" style="margin-top:28px">学校の参考画像</h3><div class="col" style="margin-top:10px">${s.referenceImages.map((im,i)=>{const u=referenceUrl(im);return `<div class="card pop"><a href="${esc(u)}" target="_blank" rel="noopener" style="display:block"><img src="${esc(u)}" alt="${esc(im.label||'学校の参考画像')} ${i+1}" loading="lazy" style="display:block;width:100%;max-height:380px;object-fit:contain;background:#fff;border:2px solid var(--ink);border-radius:var(--radius)"><div class="who">${esc(im.label||'学校の参考画像')} ${i+1}（タップで拡大）</div></a>${isAdmin()?`<button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-delete="${i}">参考画像を削除</button>`:''}</div>`}).join('')}</div>`:''}
  <h3 class="fl" style="margin-top:28px">見取図</h3><div id="ptools" class="ptools"></div><div id="plan" class="plan" aria-label="見取図"></div>
  <div id="pinfo" style="margin-top:10px;min-height:20px"></div><p class="who" style="margin-top:4px">見取図の変更は管理者の承認後に反映されます</p>
- <label class="btn" style="margin-top:8px">${s.plan?'見取図の画像を差し替える':'見取図の画像を登録する'}<input type="file" accept="image/*" hidden data-plan="${esc(s.id)}"></label>
- ${Array.isArray(s.referenceImages)&&s.referenceImages.some(referenceUrl)?`<section style="margin-top:24px"><h3 class="fl">参考画像から見取図に設定</h3><p class="who">取り込み済みの参考画像を選ぶと、再アップロードせず見取図に設定できます。</p><div class="col">${s.referenceImages.map((r,i)=>{const u=referenceUrl(r);return u?`<div class="card pop"><img class="pimg" style="margin:0;max-height:180px" src="${esc(u)}" alt="参考画像 ${i+1}" loading="lazy"><button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-plan="${i}">この画像を見取図に設定</button></div>`:''}).join('')}</div></section>`:''}</main>
- <a class="btn btn--primary fab" href="#/s/${id}/new">＋ ポイント追加</a>${nav('schools')}`;
+ <input type="file" accept="image/*" hidden data-plan="${esc(s.id)}">
+ ${Array.isArray(s.referenceImages)&&s.referenceImages.some(referenceUrl)?`<section id="reference-plan-tools" style="margin-top:24px" hidden><h3 class="fl">参考画像から見取図に設定</h3><p class="who">取り込み済みの参考画像を選ぶと、再アップロードせず見取図に設定できます。</p><div class="col">${s.referenceImages.map((r,i)=>{const u=referenceUrl(r);return u?`<div class="card pop"><img class="pimg" style="margin:0;max-height:180px" src="${esc(u)}" alt="参考画像 ${i+1}" loading="lazy"><button class="btn sbtn" style="margin-top:8px;width:100%" data-ref-plan="${i}">この画像を見取図に設定</button></div>`:''}).join('')}</div></section>`:''}</main>
+ <div class="detail-actions"><a class="btn btn--primary" href="#/s/${id}/new">＋ ポイント追加</a><button type="button" class="btn" data-edit-menu-open>✎ 編集・修正</button></div>
+ <div id="edit-menu" class="edit-sheet" hidden><div class="edit-sheet-card" role="dialog" aria-modal="true" aria-labelledby="edit-menu-title"><div class="row sb"><h2 id="edit-menu-title">編集・修正</h2><button class="btn round" type="button" data-edit-menu-close aria-label="閉じる">×</button></div><p class="who">現地で気づいた情報や写真を送れます。一般ユーザーの変更は管理者の確認後に反映されます。</p>
+ <button class="edit-option" type="button" data-menu-photo>📷 <span>学校の写真を登録・更新<small>校門や入口の写真を撮影</small></span></button>
+ <button class="edit-option" type="button" data-menu-plan-photo>🗺️ <span>見取図の画像を登録・更新<small>見取図の差し替えや新規登録</small></span></button>
+ <button class="edit-option" type="button" data-menu-plan-edit>📍 <span>見取図の位置・アイコンを編集<small>ポイント番号や目印を配置</small></span></button>
+ <h3 class="fl">送迎ポイントの修正・報告</h3><div class="col" style="margin-top:8px">${L.map((x,i)=>`<div class="card" style="padding:10px;gap:8px"><div class="grow"><div class="sm">${i+1}. ${esc(x.title)}</div><div class="who">${esc(x.cat||'')}</div></div><div class="row" style="gap:6px;flex-wrap:wrap">${(isAdmin()||x.uid===U.uid)?`<a class="btn sbtn" href="#/s/${id}/edit/${encodeURIComponent(x.id)}">内容を修正</a>`:''}<button class="btn sbtn" type="button" data-point-report="${esc(x.id)}">間違いを報告</button></div></div>`).join('')||'<p class="empty">送迎ポイントはまだありません。</p>'}</div>
+ <button class="btn" type="button" data-edit-menu-close style="width:100%;margin-top:14px">閉じる</button></div></div>
+ ${nav('schools')}`;
  drawPlan()}
 
 /* ---- 追加・編集 ---- */
@@ -322,6 +343,15 @@ watchSession(async(u,p)=>{U=u;P=p;ready=false;route();
  ready=true;route()});
 
 app.addEventListener('click',async e=>{
+ const openMenu=e.target.closest('[data-edit-menu-open]');
+ if(openMenu){$('#edit-menu').hidden=false;return}
+ if(e.target.closest('[data-edit-menu-close]')||e.target.id==='edit-menu'){const sheet=$('#edit-menu');if(sheet)sheet.hidden=true;return}
+ const menuPhoto=e.target.closest('[data-menu-photo]');
+ if(menuPhoto){$('#edit-menu').hidden=true;app.querySelector('[data-photo]')?.click();return}
+ const menuPlanPhoto=e.target.closest('[data-menu-plan-photo]');
+ if(menuPlanPhoto){$('#edit-menu').hidden=true;app.querySelector('[data-plan]')?.click();return}
+ const menuPlanEdit=e.target.closest('[data-menu-plan-edit]');
+ if(menuPlanEdit){$('#edit-menu').hidden=true;CUR.planEditing=!CUR.planEditing;drawPlan();$('#plan')?.scrollIntoView({behavior:'smooth',block:'center'});return}
  const report=e.target.closest('[data-point-report]');
  if(report){
   const point=CUR?.L?.find(x=>x.id===report.dataset.pointReport);if(!point)return;
@@ -395,7 +425,7 @@ app.addEventListener('click',async e=>{
   if(ro&&CUR.selS){const st=(CUR.s.stamps||[]).find(v=>v.id===CUR.selS);if(st){st.r=((st.r||0)+(+ro.dataset.rot)+360)%360;drawPlan();saveStamps()}return}
   if(e.target.closest('[data-unstamp]')&&CUR.selS){CUR.s.stamps=(CUR.s.stamps||[]).filter(v=>v.id!==CUR.selS);CUR.selS=null;drawPlan();saveStamps();return}
   const pl=e.target.closest('#plan');
-  if(pl){
+  if(pl){if(!CUR.planEditing)return;
    const mk=e.target.closest('[data-mk]');
    if(mk){CUR.sel=CUR.sel===mk.dataset.mk?null:mk.dataset.mk;CUR.selS=null;drawPlan();return}
    const sk=e.target.closest('[data-st]');
