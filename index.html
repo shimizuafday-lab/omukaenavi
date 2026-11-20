@@ -426,7 +426,6 @@ app.addEventListener('click',async e=>{
   if(e.target.closest('[data-unstamp]')&&CUR.selS){CUR.s.stamps=(CUR.s.stamps||[]).filter(v=>v.id!==CUR.selS);CUR.selS=null;drawPlan();saveStamps();return}
   const pl=e.target.closest('#plan');
   if(pl){if(!CUR.planEditing)return;
-   if(!CUR.planEditing)return;
    const mk=e.target.closest('[data-mk]');
    if(mk){CUR.sel=CUR.sel===mk.dataset.mk?null:mk.dataset.mk;CUR.selS=null;drawPlan();return}
    const sk=e.target.closest('[data-st]');
