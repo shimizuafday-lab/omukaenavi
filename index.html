@@ -45,7 +45,7 @@ textarea.field{height:104px;resize:none}
 .edit-option small{display:block;font-weight:500;opacity:.72;margin-top:2px}
 .plan:not(.is-editing){cursor:default}
 .plan:not(.is-editing) .mk,.plan:not(.is-editing) .st{pointer-events:none}
-#reference-plan-tools[hidden]{display:none}
+#ptools[hidden],#pinfo[hidden],#reference-plan-tools[hidden]{display:none}
 .navbar{left:50%;right:auto;width:min(488px,calc(100% - 32px));translate:-50% 0;z-index:5}
 .box{padding:18px;background:var(--surface);margin-top:16px;line-height:1.8;font-size:14px}
 .sk{height:84px;margin-top:12px}
@@ -210,7 +210,7 @@ function drawPlan(){
  const {s,L,sel,selS,tool}=CUR,box=$('#plan');if(!box)return;
  const editing=!!CUR.planEditing;
  $('#ptools').hidden=!editing;$('#pinfo').hidden=!editing;
- $('#reference-plan-tools').hidden=!editing;
+ const refTools=$('#reference-plan-tools');if(refTools)refTools.hidden=!editing;
  box.classList.toggle('is-editing',editing);
  const SL=(s.stamps||[]).filter(st=>STAMPS[st.t]);
  $('#ptools').innerHTML=[['num','番号',''],...Object.entries(STAMPS).map(([k,v])=>[k,v.l,stampSvg(k,16,2.6)])].map(([k,l,i])=>`<button class="btn ptl" data-ptool="${k}" aria-pressed="${k===tool}">${i}${l}</button>`).join('');
