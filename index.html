@@ -195,7 +195,7 @@ function settings(){
  <p class="note" style="margin-top:20px">写真を登録するときは編集画面が開きます。児童の顔・名札・車のナンバーは「モザイク」か「黒塗り」で隠してください。</p></main>${nav('settings')}`}
 
 /* ---- 学校詳細 ---- */
-const ptCard=(s,x,i)=>`<${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}>`;
+const ptCard=(s,x,i)=>`<div class="col" style="margin-top:0"><${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}><button type="button" class="btn sbtn" data-point-report="${esc(x.id)}" style="width:100%">情報の間違いを報告</button></div>`;
 function drawPlan(){
  const {s,L,sel,selS,tool}=CUR,box=$('#plan');if(!box)return;
  const SL=(s.stamps||[]).filter(st=>STAMPS[st.t]);
@@ -322,6 +322,16 @@ watchSession(async(u,p)=>{U=u;P=p;ready=false;route();
  ready=true;route()});
 
 app.addEventListener('click',async e=>{
+ const report=e.target.closest('[data-point-report]');
+ if(report){
+  const point=CUR?.L?.find(x=>x.id===report.dataset.pointReport);if(!point)return;
+  const message=prompt('この送迎ポイントのどこが間違っていますか？正しい情報や修正内容を入力してください。');
+  if(!message||!message.trim())return;
+  report.disabled=true;
+  try{await submitRequest('point-report',CUR.s.id,{message:message.trim().slice(0,2000),pointTitle:point.title||'',currentCategory:point.cat||'',currentBody:point.body||''},point.id)}
+  catch(err){toast(errMsg(err));report.disabled=false}
+  return;
+ }
  const nv=e.target.closest('[data-nav]');if(nv){location.hash='#/'+nv.dataset.nav;return}
  const m=e.target.closest('[data-m]');if(m){authView(m.dataset.m);return}
  if(e.target.closest('[data-lo]')){await A.signOut(auth);U=P=null;authView();return}
