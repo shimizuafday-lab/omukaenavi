@@ -195,7 +195,7 @@ function settings(){
  <p class="note" style="margin-top:20px">写真を登録するときは編集画面が開きます。児童の顔・名札・車のナンバーは「モザイク」か「黒塗り」で隠してください。</p></main>${nav('settings')}`}
 
 /* ---- 学校詳細 ---- */
-const ptCard=(s,x,i)=>`<div class="col" style="margin-top:0"><${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}><button type="button" class="btn sbtn" data-point-report="${esc(x.id)}" style="width:100%">情報の間違いを報告</button></div>`;
+const ptCard=(s,x,i)=>`<div class="col" style="margin-top:0"><${(isAdmin()||x.uid===U.uid)?'a':'div'} class="card pop" style="--i:${Math.min(i,8)}" ${(isAdmin()||x.uid===U.uid)?`href="#/s/${encodeURIComponent(s.id)}/edit/${x.id}"`:''}><div class="no">${i+1}</div><div class="grow"><span class="tag tag--mid">${esc(x.cat)}</span><div class="nm" style="margin-top:6px">${esc(x.title)}</div>${x.body?`<div class="bd">${esc(x.body)}</div>`:''}</div>${x.img?`<img class="th2" src="${esc(x.img)}" alt="" loading="lazy">`:''}</${(isAdmin()||x.uid===U.uid)?'a':'div'}><button type="button" class="btn sbtn" data-point-report="${esc(x.id)}" style="width:auto;align-self:flex-start;min-height:30px;padding:0 10px;font-size:12px;margin-top:4px">📝 修正報告</button></div>`;
 function drawPlan(){
  const {s,L,sel,selS,tool}=CUR,box=$('#plan');if(!box)return;
  const SL=(s.stamps||[]).filter(st=>STAMPS[st.t]);
